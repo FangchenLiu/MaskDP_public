@@ -1,0 +1,19 @@
+# @package agent
+_target_: agent.gpt.GPTAgent
+name: gpt
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+device: ${device}
+lr: 1e-4
+use_tb: ${use_tb}
+batch_size: 1024 # 256 for pixels
+stddev_schedule: 0.2
+transformer_cfg:
+  n_embd: 128
+  n_head: 2
+  n_layer: 5
+  embd_pdrop: 0
+  resid_pdrop: 0
+  attn_pdrop: 0
+  traj_length: 12
+  norm: 'l2'

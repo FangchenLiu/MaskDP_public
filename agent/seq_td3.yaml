@@ -1,0 +1,25 @@
+# @package agent
+_target_: agent.seq_td3.ValueTransformerAgent
+name: td3_seq
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+device: ${device}
+lr: 1e-4
+critic_target_tau: 0.01
+use_tb: ${use_tb}
+stddev_schedule: 0.2
+stddev_clip: 0.3
+nstep: 1
+batch_size: 1024 # 256 for pixels
+has_next_action: False
+transformer_cfg:
+  n_embd: 128
+  n_head: 2
+  n_layer: 1
+  embd_pdrop: 0
+  resid_pdrop: 0
+  attn_pdrop: 0
+  traj_length: 4
+  episode_len: 1000
+  mask_type: 'causal'
+  pe_type: 'relative'

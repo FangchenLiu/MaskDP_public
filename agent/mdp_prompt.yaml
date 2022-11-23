@@ -1,0 +1,26 @@
+# @package agent
+_target_: agent.mdp_prompt.MDPPromptAgent
+name: mdp_prompt
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+device: ${device}
+lr: 1e-4
+use_tb: ${use_tb}
+batch_size: 1024 # 256 for pixels
+stddev_schedule: 0.2
+stddev_clip: 0.3
+context_length: 30
+forecast_length: 30
+transformer_cfg:
+  n_embd: 256
+  n_head: 4
+  n_enc_layer: 3
+  n_dec_layer: 2
+  embd_pdrop: 0
+  resid_pdrop: 0
+  attn_pdrop: 0
+  mask_ratio: 0.75
+  traj_length: 128
+  loss: 'masked'
+  pe: 'fixed'
+  norm: 'l2'

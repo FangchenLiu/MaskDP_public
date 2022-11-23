@@ -1,0 +1,22 @@
+# @package agent
+_target_: agent.mdp_goal.MDPGoalAgent
+name: mdp_goal
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+device: ${device}
+lr: 1e-4
+use_tb: ${use_tb}
+batch_size: 1024 # 256 for pixels
+finetune: 'decoder'
+transformer_cfg:
+  n_embd: 256
+  n_head: 4
+  n_enc_layer: 3
+  n_dec_layer: 2
+  embd_pdrop: 0
+  resid_pdrop: 0
+  attn_pdrop: 0
+  mask_ratio: 0.75
+  traj_length: 16
+  loss: 'masked'
+  pe: 'fixed'

@@ -1,0 +1,46 @@
+defaults:
+  - agent: mdp_goal # can be mdp_goal or mdp_prompt
+  - override hydra/launcher: submitit_local
+
+# unsupervised exploration
+pretrained_data: expert # [mixed, semi, sup, unsup]
+finetuned_data: expert # [mixed, semi, sup, unsup]
+# task settings
+task: walker_walk
+discount: 0.99
+# train settings
+num_grad_steps: 500000
+log_every_steps: 1000
+# eval
+eval_every_steps: 10000
+num_eval_episodes: 100
+# snapshot
+snapshot_ts: 100000
+snapshot_base_dir: path/to/snapshot
+
+# dataset;  # not required
+#replay_buffer_dir: path/to/replay_buffer
+#replay_buffer_size: 100000000
+#replay_buffer_num_workers: 16
+#batch_size: ${agent.batch_size}
+
+# goal loader dataset
+goal_buffer_dir: path/to/goal_buffer
+goal_buffer_size: 100000000
+goal_buffer_num_workers: 4
+
+# misc
+seed: 1
+device: cuda
+save_video: true
+use_tb: true
+use_wandb: true
+project: mdp-eval
+notes: "eval"
+replan: true
+mt: false
+
+
+hydra:
+  run:
+    dir: ./models/finetune/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}
