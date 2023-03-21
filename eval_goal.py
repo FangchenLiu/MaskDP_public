@@ -38,11 +38,11 @@ def get_dir(cfg):
     if cfg.mt is False:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
     else:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(cfg.seed)/ f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 def eval_seq_bc(global_step, agent, env, logger, goal_iter, device, num_eval_episodes, video_recorder):
@@ -143,7 +143,7 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
         video_recorder.init(env, enabled=True)
         if replan is False:
             with torch.no_grad(), utils.eval_mode(agent):
-                actions = agent.act(start_obs[episode].unsqueeze(0), goal_obs[episode].unsqueeze(0), timestep[episode]+5)
+                actions = agent.act(start_obs[episode].unsqueeze(0), goal_obs[episode].unsqueeze(0), timestep[episode])
 
             for a in actions:
                 time_step = env.step(a)
@@ -158,9 +158,9 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
             total_dist2goal.append(dist2goal)
         else:
             obs = start_obs[episode]
-            for t in range(timestep[episode]+3):
+            for t in range(timestep[episode]):
                 with torch.no_grad(), utils.eval_mode(agent):
-                    action = agent.act(obs.unsqueeze(0), goal_obs[episode].unsqueeze(0), timestep[episode]+3 - t)[0, ...]
+                    action = agent.act(obs.unsqueeze(0), goal_obs[episode].unsqueeze(0), timestep[episode] - t)[0, ...]
                 time_step = env.step(action)
                 obs = np.asarray(time_step.observation)
                 obs = torch.as_tensor(obs, device=device)
@@ -225,10 +225,19 @@ def main(cfg):
     # create data storage
     domain = get_domain(cfg.task)
 
-    # can be custermized
-    goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
+    replay_dir = Path(cfg.replay_buffer_dir) / domain
+    goal_dir = Path(cfg.goal_buffer_dir) / domain
 
-    print(f'replay dir, goal dir: {goal_dir}')
+    print(f'replay dir, goal dir: {replay_dir, goal_dir}')
+
+    replay_loader = make_replay_loader(env, replay_dir, cfg.replay_buffer_size,
+                                       cfg.batch_size,
+                                       cfg.replay_buffer_num_workers,
+                                       cfg.discount,
+                                       domain,
+                                       agent.config.traj_length,
+                                       relabel=False)
+    replay_iter = iter(replay_loader)
 
     goal_loader = make_replay_loader(env, goal_dir, cfg.goal_buffer_size,
                                        cfg.num_eval_episodes,
@@ -266,6 +275,17 @@ def main(cfg):
                 eval_seq_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
                         video_recorder)
             #elif cfg.agent.name == 'seq_goal':
+
+        '''
+        metrics = agent.update(replay_iter, global_step)
+        logger.log_metrics(metrics, global_step, ty='train')
+        if log_every_step(global_step):
+            elapsed_time, total_time = timer.reset()
+            with logger.log_and_dump_ctx(global_step, ty='train') as log:
+                log('fps', cfg.log_every_steps / elapsed_time)
+                log('total_time', total_time)
+                log('step', global_step)
+        '''
 
         global_step += 1
         break

@@ -16,16 +16,15 @@ eval_every_steps: 10000
 num_eval_episodes: 100
 # snapshot
 snapshot_ts: 100000
-snapshot_base_dir: path/to/snapshot
-
-# dataset;  # not required
-#replay_buffer_dir: path/to/replay_buffer
-#replay_buffer_size: 100000000
-#replay_buffer_num_workers: 16
-#batch_size: ${agent.batch_size}
+snapshot_base_dir: /shared/hao/research/value_transformer/output/2022.05.03/154234_mdp/snapshot
+# dataset
+replay_buffer_dir: /shared/fangchen/rl_data_collection/expert
+replay_buffer_size: 100000000
+replay_buffer_num_workers: 16
+batch_size: ${agent.batch_size}
 
 # goal loader dataset
-goal_buffer_dir: path/to/goal_buffer
+goal_buffer_dir: /shared/fangchen/rl_data_collection/expert
 goal_buffer_size: 100000000
 goal_buffer_num_workers: 4
 
@@ -35,12 +34,12 @@ device: cuda
 save_video: true
 use_tb: true
 use_wandb: true
-project: mdp-eval
-notes: "eval"
+project: mdp-fangchen-finetune
+notes: "finetune"
 replan: true
 mt: false
 
 
 hydra:
   run:
-    dir: ./models/finetune/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}
+    dir: /shared/fangchen/models/finetune/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}

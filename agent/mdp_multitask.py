@@ -28,11 +28,8 @@ class Actor(nn.Module):
         self.register_buffer('attn_mask', torch.tril(torch.ones(self.max_len, self.max_len))[None, None, ...])
 
     def freeze_layers(self):
-        assert self.mdp.state_token.mean() == 0
-        assert self.mdp.action_token.mean() == 0
-
         for param in self.mdp.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         # if self.finetune == 'encoder':
         #     for b in self.mdp.encoder_blocks:
@@ -125,14 +122,8 @@ class Critic(nn.Module):
         self.apply(utils.weight_init)
 
     def freeze_layers(self):
-        frozen_layers = [self.mdp.pos_embed, self.mdp.decoder_pos_embed, self.mdp.state_embed, self.mdp.action_embed,
-                         self.mdp.mask_token, self.mdp.state_token, self.mdp.action_token, self.mdp.action_head, self.mdp.state_head]
-
-        assert self.mdp.state_token.mean() == 0
-        assert self.mdp.action_token.mean() == 0
-
         for param in self.mdp.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         # if self.finetune == 'encoder':
         #     for b in self.mdp.encoder_blocks:

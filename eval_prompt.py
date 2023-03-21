@@ -38,11 +38,13 @@ def get_dir(cfg):
     if cfg.mt is False:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(cfg.seed)/ f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(
+            cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
     else:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(cfg.seed)/ f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(
+            cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 def eval_autoregressive(global_step, agent, env, logger, context_iter, device, num_eval_episodes, video_recorder, cfg):
@@ -193,9 +195,11 @@ def main(cfg):
 
     # create data storage
     domain = get_domain(cfg.task)
+
+    replay_dir = Path(cfg.replay_buffer_dir) / domain / cfg.task
     goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
 
-    print(f'replay dir, context dir: {goal_dir}')
+    print(f'replay dir, context dir: {replay_dir, goal_dir}')
 
     context_loader = make_replay_loader(env, goal_dir, cfg.goal_buffer_size,
                                      cfg.num_eval_episodes,
@@ -229,6 +233,18 @@ def main(cfg):
                 eval_autoregressive(global_step, agent, env, logger, context_iter, device, cfg.num_eval_episodes,
                                     video_recorder, cfg)
         global_step += 1
+
+        '''
+        metrics = agent.update(replay_iter)
+        logger.log_metrics(metrics, global_step, ty='train')
+        if log_every_step(global_step):
+            elapsed_time, total_time = timer.reset()
+            with logger.log_and_dump_ctx(global_step, ty='train') as log:
+                log('fps', cfg.log_every_steps / elapsed_time)
+                log('total_time', total_time)
+                log('step', global_step)
+        
+        '''
         break
 
 

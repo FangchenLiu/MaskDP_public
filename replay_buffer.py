@@ -145,7 +145,7 @@ class OfflineReplayBuffer(IterableDataset):
         forecast_length = self._cfg.forecast_length
         # add +1 for the first dummy transition
         #idx = np.random.randint(0, 50 - context_length+ 1) + 1
-        start_idx = np.array(random.sample(range(12, 60), 5).sort())
+        start_idx = np.random.randint(100, 850)
         obs = episode['observation'][start_idx-1: start_idx+context_length] # last state is the initial obs
         action = episode['action'][start_idx: start_idx+context_length]
         reward = episode['reward'][start_idx+context_length: start_idx+context_length+forecast_length]

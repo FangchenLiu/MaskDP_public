@@ -38,11 +38,13 @@ def get_dir(cfg):
     if cfg.mt is False:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(
+            1) / f'snapshot_{cfg.snapshot_ts}.pt'
     else:
         snapshot_base_dir = Path(cfg.snapshot_base_dir)
         snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
+        snapshot = snapshot_dir / str(
+            1) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 
