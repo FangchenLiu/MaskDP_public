@@ -5,7 +5,7 @@ data=(unsup)
 for i in "${!data[@]}"
 do
     CUDA_VISIBLE_DEVICES=2 python finetune_multitask.py \
-        pretrained_data=expert \
+        pretrained_data=mixed \
         finetuned_data=${data[$i]} \
         agent=mdp_multitask \
         agent.batch_size=256 \
@@ -20,7 +20,7 @@ do
         use_wandb=True &
     sleep 30
     CUDA_VISIBLE_DEVICES=3 python finetune_multitask.py \
-        pretrained_data=expert \
+        pretrained_data=mixed \
         finetuned_data=${data[$i]} \
         agent=mdp_multitask \
         agent.batch_size=256 \
@@ -34,7 +34,7 @@ do
         use_wandb=True &
     sleep 30
     CUDA_VISIBLE_DEVICES=4 python finetune_multitask.py \
-        pretrained_data=expert \
+        pretrained_data=mixed \
         finetuned_data=${data[$i]} \
         agent=mdp_multitask \
         agent.batch_size=256 \
