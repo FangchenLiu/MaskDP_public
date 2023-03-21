@@ -4,8 +4,6 @@
 
 This codebase is a pre-released implementation of [MaskDP](https://openreview.net/forum?id=lNokkSaUbfV).
 
-TODO: clean up codebase,  upload models and datasets.
-
 ## Prerequisites
 
 Install [MuJoCo](http://www.mujoco.org/) if it is not already the case:
@@ -27,11 +25,61 @@ conda activate maskdp
 ```
 
 ## Dataset
-
-In this paper, we use unsupervised/semi/supervised data collected based on [ExoRL](https://github.com/denisyarats/exorl).
-You can follow the repo and collect offline data as described in our appendix. You can also
-collect your own offline data. 
-
-## Example Scripts
-
-We provide example in ``example_scripts`` to train or evaluate the model. Please modify the path to your local dataset.
+This branch consists codes about data collection
+```sh
+# collecting per-domain unsupervised data (only intrinsic rewards), walker_stand is just used to specify a domain
+CUDA_VISIBLE_DEVICES=7 python pretrain.py \
+    seed=42 \
+    bonus=0.0 \
+    task=walker_stand \
+    supervised=false \
+    agent=proto \
+    agent.nstep=1 \
+    agent.batch_size=1024 \
+    obs_type=states \
+    action_repeat=1 \
+    num_train_frames=2000010 \
+    replay_buffer_size=100000 \
+    replay_buffer_num_workers=4 \
+    save_replay_buffer=True \
+    project=MaskDP_state_data \
+    use_wandb=True &
+```
+```sh
+# collecting semi-supervised data (mix intrinsic and extrinsic rewards) for each task
+CUDA_VISIBLE_DEVICES=0 python pretrain.py \
+    seed=42 \
+    bonus=0.5 \
+    task=walker_stand \
+    supervised=true \
+    agent=proto \
+    agent.nstep=1 \
+    agent.batch_size=1024 \
+    obs_type=states \
+    action_repeat=1 \
+    num_train_frames=2000010 \
+    replay_buffer_size=100000 \
+    replay_buffer_num_workers=4 \
+    save_replay_buffer=True \
+    project=MaskDP_state_data \
+    use_wandb=True &
+```
+```sh
+# collecting supervised data (only extrinsic rewards) for each task
+CUDA_VISIBLE_DEVICES=0 python pretrain.py \
+    seed=42 \
+    bonus=0.5 \
+    task=walker_stand \
+    supervised=true \
+    agent=ddpg \
+    agent.nstep=1 \
+    agent.batch_size=1024 \
+    obs_type=states \
+    action_repeat=1 \
+    num_train_frames=2000010 \
+    replay_buffer_size=100000 \
+    replay_buffer_num_workers=4 \
+    save_replay_buffer=True \
+    project=MaskDP_state_data \
+    use_wandb=True &
+```
