@@ -27,18 +27,18 @@ conda activate maskdp
 ## Dataset
 This branch consists codes about data collection
 ```sh
-# collecting per-domain unsupervised data (only intrinsic rewards), walker_stand is just used to specify a domain
+# collecting 10M per-domain unsupervised data (only intrinsic rewards), walker_stand is just used to specify a domain
 CUDA_VISIBLE_DEVICES=7 python pretrain.py \
     seed=42 \
     bonus=0.0 \
-    task=walker_stand \
+    task=walker_stand \ # note: change to cheetah_run, quadruped_run for other 2 domains
     supervised=false \
     agent=proto \
     agent.nstep=1 \
     agent.batch_size=1024 \
     obs_type=states \
     action_repeat=1 \
-    num_train_frames=2000010 \
+    num_train_frames=10000010 \
     replay_buffer_size=100000 \
     replay_buffer_num_workers=4 \
     save_replay_buffer=True \
@@ -46,11 +46,11 @@ CUDA_VISIBLE_DEVICES=7 python pretrain.py \
     use_wandb=True &
 ```
 ```sh
-# collecting semi-supervised data (mix intrinsic and extrinsic rewards) for each task
+# collecting 2M semi-supervised data (mix intrinsic and extrinsic rewards) for each task
 CUDA_VISIBLE_DEVICES=0 python pretrain.py \
     seed=42 \
     bonus=0.5 \
-    task=walker_stand \
+    task=walker_stand \ # note: change to walker_run/stand, quadruped_run/stand for other 6 tasks
     supervised=true \
     agent=proto \
     agent.nstep=1 \
@@ -65,11 +65,11 @@ CUDA_VISIBLE_DEVICES=0 python pretrain.py \
     use_wandb=True &
 ```
 ```sh
-# collecting supervised data (only extrinsic rewards) for each task
+# collecting 2M supervised data (only extrinsic rewards) for each task
 CUDA_VISIBLE_DEVICES=0 python pretrain.py \
     seed=42 \
     bonus=0.5 \
-    task=walker_stand \
+    task=walker_stand \ # note: change to walker_run/stand, quadruped_run/stand for other 6 tasks
     supervised=true \
     agent=ddpg \
     agent.nstep=1 \
