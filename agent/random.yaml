@@ -1,0 +1,11 @@
+# @package agent
+_target_: agent.random.RandomAgent
+name: random
+obs_type: ??? # to be specified later
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+num_expl_steps: ??? # to be specified later
+nstep: 1
+batch_size: 1024 # 256 for pixels
+supervised: ${supervised} # supervised dataset
+bonus: ${bonus}

@@ -1,0 +1,45 @@
+defaults:
+  - agent: rnd
+  - override hydra/launcher: submitit_local
+
+# task settings
+domain: walker # primal task will be infered in runtime
+obs_type: states # [states, pixels]
+frame_stack: 1 # only works if obs_type=pixels
+action_repeat: 1 # set to 2 for pixels
+discount: 0.99
+supervised: false # mix URL with task-specific reward
+bonus: 0.5 # only works if supervised=true & agent is URL agent (i.e. not ddpg)
+task: walker_stand # only works if supervised=true
+# train settings
+num_train_frames: 2000010
+num_seed_frames: 4000
+# eval
+eval_every_frames: 10000
+num_eval_episodes: 10
+# snapshot
+save_snapshot: false
+save_every_frames: 1000000
+# replay buffer
+replay_buffer_size: 100000
+replay_buffer_num_workers: 4
+save_replay_buffer: false
+batch_size: ${agent.batch_size}
+nstep: ${agent.nstep}
+update_encoder: true # should always be true for pre-training
+# misc
+seed: 1
+device: cuda
+save_video: true
+save_train_video: false
+use_tb: false
+use_wandb: false
+# wandb
+project: data_collection
+entity: value_transformer
+notes: exp
+
+
+hydra:
+  run:
+    dir: ./data_collection/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}_${task}_${bonus}_${obs_type}_${seed}
