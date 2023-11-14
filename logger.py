@@ -9,29 +9,41 @@ from termcolor import colored
 from torch.utils.tensorboard import SummaryWriter
 import wandb
 
-TRAIN_FORMAT = [('step', 'S', 'int'), ('batch_reward', 'BR', 'float'),
-                ('fps', 'FPS', 'float'), ('total_time', 'T', 'time')]
+TRAIN_FORMAT = [
+    ("step", "S", "int"),
+    ("batch_reward", "BR", "float"),
+    ("fps", "FPS", "float"),
+    ("total_time", "T", "time"),
+]
 
-EVAL_FORMAT = [('step', 'S', 'int'), ('episode_length', 'L', 'int'),
-               ('episode_reward', 'R', 'float'),
-               ('distance2goal', 'DG', 'float'),
-               ('std', 'STD', 'float'),
-               ('expert_reward', 'ER', 'float'),
-               ('env_id', 'TASK', 'int'),
-               ('total_time', 'T', 'time')]
+EVAL_FORMAT = [
+    ("step", "S", "int"),
+    ("episode_length", "L", "int"),
+    ("episode_reward", "R", "float"),
+    ("distance2goal", "DG", "float"),
+    ("std", "STD", "float"),
+    ("expert_reward", "ER", "float"),
+    ("env_id", "TASK", "int"),
+    ("total_time", "T", "time"),
+]
 
-MTGOAL_FORMAT = [('step', 'S', 'int'),
-                 ('dist2goal1', 'DG1', 'float'),
-                 ('dist2goal2', 'DG2', 'float'),
-                 ('dist2goal3', 'DG3', 'float'),
-                 ('dist2goal4', 'DG4', 'float'),
-                 ('dist2goal5', 'DG5', 'float'),
-                 ('total_time', 'T', 'time')]
+MTGOAL_FORMAT = [
+    ("step", "S", "int"),
+    ("dist2goal1", "DG1", "float"),
+    ("dist2goal2", "DG2", "float"),
+    ("dist2goal3", "DG3", "float"),
+    ("dist2goal4", "DG4", "float"),
+    ("dist2goal5", "DG5", "float"),
+    ("total_time", "T", "time"),
+]
 
-MTRL_FORMAT = [('step', 'S', 'int'),
-                 ('reward', 'R', 'float'),
-                 ('std', 'STD', 'float'),
-                 ('total_time', 'T', 'time')]
+MTRL_FORMAT = [
+    ("step", "S", "int"),
+    ("reward", "R", "float"),
+    ("std", "STD", "float"),
+    ("total_time", "T", "time"),
+]
+
 
 class AverageMeter(object):
     def __init__(self):
@@ -61,27 +73,25 @@ class MetersGroup(object):
     def _prime_meters(self):
         data = dict()
         for key, meter in self._meters.items():
-            if key.startswith('train'):
-                key = key[len('train') + 1:]
+            if key.startswith("train"):
+                key = key[len("train") + 1 :]
             else:
-                key = key[len('eval') + 1:]
-            key = key.replace('/', '_')
+                key = key[len("eval") + 1 :]
+            key = key.replace("/", "_")
             data[key] = meter.value()
         return data
 
     def _remove_old_entries(self, data):
         rows = []
-        with self._csv_file_name.open('r') as f:
+        with self._csv_file_name.open("r") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if 'episode' in row.keys():
-                    if float(row['episode']) >= data['episode']:
+                if "episode" in row.keys():
+                    if float(row["episode"]) >= data["episode"]:
                         break
                 rows.append(row)
-        with self._csv_file_name.open('w') as f:
-            writer = csv.DictWriter(f,
-                                    fieldnames=sorted(data.keys()),
-                                    restval=0.0)
+        with self._csv_file_name.open("w") as f:
+            writer = csv.DictWriter(f, fieldnames=sorted(data.keys()), restval=0.0)
             writer.writeheader()
             for row in rows:
                 writer.writerow(row)
@@ -93,10 +103,10 @@ class MetersGroup(object):
                 self._remove_old_entries(data)
                 should_write_header = False
 
-            self._csv_file = self._csv_file_name.open('a')
-            self._csv_writer = csv.DictWriter(self._csv_file,
-                                              fieldnames=sorted(data.keys()),
-                                              restval=0.0)
+            self._csv_file = self._csv_file_name.open("a")
+            self._csv_writer = csv.DictWriter(
+                self._csv_file, fieldnames=sorted(data.keys()), restval=0.0
+            )
             if should_write_header:
                 self._csv_writer.writeheader()
 
@@ -104,26 +114,26 @@ class MetersGroup(object):
         self._csv_file.flush()
 
     def _format(self, key, value, ty):
-        if ty == 'int':
+        if ty == "int":
             value = int(value)
-            return f'{key}: {value}'
-        elif ty == 'float':
-            return f'{key}: {value:.04f}'
-        elif ty == 'time':
+            return f"{key}: {value}"
+        elif ty == "float":
+            return f"{key}: {value:.04f}"
+        elif ty == "time":
             value = str(datetime.timedelta(seconds=int(value)))
-            return f'{key}: {value}'
-        elif ty == 'str':
-            return f'{key}: {value}'
+            return f"{key}: {value}"
+        elif ty == "str":
+            return f"{key}: {value}"
         else:
-            raise f'invalid format type: {ty}'
+            raise f"invalid format type: {ty}"
 
     def _dump_to_console(self, data, prefix):
-        prefix = colored(prefix, 'yellow' if prefix == 'train' else 'green')
-        pieces = [f'| {prefix: <14}']
+        prefix = colored(prefix, "yellow" if prefix == "train" else "green")
+        pieces = [f"| {prefix: <14}"]
         for key, disp_key, ty in self._formating:
             value = data.get(key, 0)
             pieces.append(self._format(disp_key, value, ty))
-        print(' | '.join(pieces))
+        print(" | ".join(pieces))
 
     def _dump_to_wandb(self, data):
         wandb.log(data)
@@ -132,9 +142,9 @@ class MetersGroup(object):
         if len(self._meters) == 0:
             return
         data = self._prime_meters()
-        data['frame'] = step
+        data["frame"] = step
         if self.use_wandb:
-            wandb_data = {prefix + '/' + key: val for key,val in data.items()}
+            wandb_data = {prefix + "/" + key: val for key, val in data.items()}
             self._dump_to_wandb(data=wandb_data)
         self._dump_to_csv(data)
         self._dump_to_console(data, prefix)
@@ -144,23 +154,23 @@ class MetersGroup(object):
 class Logger(object):
     def __init__(self, log_dir, use_tb, use_wandb, mode=None):
         self._log_dir = log_dir
-        self._train_mg = MetersGroup(log_dir / 'train.csv',
-                                     formating=TRAIN_FORMAT,
-                                     use_wandb=use_wandb)
+        self._train_mg = MetersGroup(
+            log_dir / "train.csv", formating=TRAIN_FORMAT, use_wandb=use_wandb
+        )
         if mode is None:
-            self._eval_mg = MetersGroup(log_dir / 'eval.csv',
-                                        formating=EVAL_FORMAT,
-                                        use_wandb=use_wandb)
-        elif mode == 'multi_goal':
-            self._eval_mg = MetersGroup(log_dir / 'eval.csv',
-                                        formating=MTGOAL_FORMAT,
-                                        use_wandb=use_wandb)
-        elif mode == 'mtrl':
-            self._eval_mg = MetersGroup(log_dir / 'eval.csv',
-                                        formating=MTRL_FORMAT,
-                                        use_wandb=use_wandb)
+            self._eval_mg = MetersGroup(
+                log_dir / "eval.csv", formating=EVAL_FORMAT, use_wandb=use_wandb
+            )
+        elif mode == "multi_goal":
+            self._eval_mg = MetersGroup(
+                log_dir / "eval.csv", formating=MTGOAL_FORMAT, use_wandb=use_wandb
+            )
+        elif mode == "mtrl":
+            self._eval_mg = MetersGroup(
+                log_dir / "eval.csv", formating=MTRL_FORMAT, use_wandb=use_wandb
+            )
         if use_tb:
-            self._sw = SummaryWriter(str(log_dir / 'tb'))
+            self._sw = SummaryWriter(str(log_dir / "tb"))
         else:
             self._sw = None
         self.use_wandb = use_wandb
@@ -170,22 +180,22 @@ class Logger(object):
             self._sw.add_scalar(key, value, step)
 
     def log(self, key, value, step):
-        assert key.startswith('train') or key.startswith('eval')
+        assert key.startswith("train") or key.startswith("eval")
         if type(value) == torch.Tensor:
             value = value.item()
         self._try_sw_log(key, value, step)
-        mg = self._train_mg if key.startswith('train') else self._eval_mg
+        mg = self._train_mg if key.startswith("train") else self._eval_mg
         mg.log(key, value)
 
     def log_metrics(self, metrics, step, ty):
         for key, value in metrics.items():
-            self.log(f'{ty}/{key}', value, step)
+            self.log(f"{ty}/{key}", value, step)
 
     def dump(self, step, ty=None):
-        if ty is None or ty == 'eval':
-            self._eval_mg.dump(step, 'eval')
-        if ty is None or ty == 'train':
-            self._train_mg.dump(step, 'train')
+        if ty is None or ty == "eval":
+            self._eval_mg.dump(step, "eval")
+        if ty is None or ty == "train":
+            self._train_mg.dump(step, "train")
 
     def log_and_dump_ctx(self, step, ty):
         return LogAndDumpCtx(self, step, ty)
@@ -201,7 +211,7 @@ class LogAndDumpCtx:
         return self
 
     def __call__(self, key, value):
-        self._logger.log(f'{self._ty}/{key}', value, self._step)
+        self._logger.log(f"{self._ty}/{key}", value, self._step)
 
     def __exit__(self, *args):
         self._logger.dump(self._step, self._ty)

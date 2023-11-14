@@ -1,11 +1,11 @@
 import warnings
 
-warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import os
 
-os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
-os.environ['MUJOCO_GL'] = 'egl'
+os.environ["MKL_SERVICE_FORCE_INTEL"] = "1"
+os.environ["MUJOCO_GL"] = "egl"
 
 from pathlib import Path
 
@@ -26,26 +26,38 @@ torch.backends.cudnn.benchmark = True
 
 
 def get_domain(task):
-    if task.startswith('point_mass_maze'):
-        return 'point_mass_maze'
-    return task.split('_', 1)[0]
+    if task.startswith("point_mass_maze"):
+        return "point_mass_maze"
+    return task.split("_", 1)[0]
 
 
 def get_data_seed(seed, num_data_seeds):
     return (seed - 1) % num_data_seeds + 1
 
+
 def get_dir(cfg):
     snapshot_base_dir = Path(cfg.snapshot_base_dir)
     snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-    snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
+    snapshot = snapshot_dir / str(1) / f"snapshot_{cfg.snapshot_ts}.pt"
     return snapshot
 
-def eval_seq_bc(global_step, agent, env, logger, goal_iter, device, num_eval_episodes, video_recorder):
+
+def eval_seq_bc(
+    global_step,
+    agent,
+    env,
+    logger,
+    goal_iter,
+    device,
+    num_eval_episodes,
+    video_recorder,
+):
     step, episode, total_dist2goal = 0, 0, []
     eval_until_episode = utils.Until(num_eval_episodes)
     batch = next(goal_iter)
     start_obs, start_physics, goal, goal_physics, time_budget = utils.to_torch(
-        batch, device)
+        batch, device
+    )
 
     while eval_until_episode(episode):
         time_step = env.reset()
@@ -63,42 +75,53 @@ def eval_seq_bc(global_step, agent, env, logger, goal_iter, device, num_eval_epi
             if i == 0:
                 current_budget = epi_budget[i] + 2
             else:
-                current_budget = epi_budget[i] - epi_budget[i-1] + 2
+                current_budget = epi_budget[i] - epi_budget[i - 1] + 2
             for _ in range(current_budget):
                 with torch.no_grad(), utils.eval_mode(agent):
-                    action = agent.act(obs,
-                                       current_goal,
-                                       global_step)
+                    action = agent.act(obs, current_goal, global_step)
                 time_step = env.step(action)
                 obs_t = np.asarray(time_step.observation)
                 obs_t = torch.as_tensor(obs_t, device=device)
                 obs = torch.cat((obs, obs_t.unsqueeze(0)), dim=0)
 
-                dist = np.linalg.norm(time_step.observation - current_goal.cpu().numpy())
+                dist = np.linalg.norm(
+                    time_step.observation - current_goal.cpu().numpy()
+                )
                 dist2goal = min(dist2goal, dist)
                 video_recorder.record(env)
             episode_dist.append(dist2goal)
 
         total_dist2goal.append(episode_dist)
-        video_recorder.save(f'{global_step}.mp4')
+        video_recorder.save(f"{global_step}.mp4")
         video_recorder.render_goal(env, goal_physics[episode, -1])
         episode += 1
 
     total_dist2goal = np.array(total_dist2goal)
-    with logger.log_and_dump_ctx(global_step, ty='eval') as log:
-        log('dist2goal1', np.mean(total_dist2goal[:, 0]))
-        log('dist2goal2', np.mean(total_dist2goal[:, 1]))
-        log('dist2goal3', np.mean(total_dist2goal[:, 2]))
-        log('dist2goal4', np.mean(total_dist2goal[:, 3]))
-        log('dist2goal5', np.mean(total_dist2goal[:, 4]))
-        log('step', global_step)
+    with logger.log_and_dump_ctx(global_step, ty="eval") as log:
+        log("dist2goal1", np.mean(total_dist2goal[:, 0]))
+        log("dist2goal2", np.mean(total_dist2goal[:, 1]))
+        log("dist2goal3", np.mean(total_dist2goal[:, 2]))
+        log("dist2goal4", np.mean(total_dist2goal[:, 3]))
+        log("dist2goal5", np.mean(total_dist2goal[:, 4]))
+        log("step", global_step)
 
-def eval_bc(global_step, agent, env, logger, goal_iter, device, num_eval_episodes, video_recorder):
+
+def eval_bc(
+    global_step,
+    agent,
+    env,
+    logger,
+    goal_iter,
+    device,
+    num_eval_episodes,
+    video_recorder,
+):
     step, episode, total_dist2goal = 0, 0, []
     eval_until_episode = utils.Until(num_eval_episodes)
     batch = next(goal_iter)
     start_obs, start_physics, goal, goal_physics, time_budget = utils.to_torch(
-        batch, device)
+        batch, device
+    )
 
     while eval_until_episode(episode):
         time_step = env.reset()
@@ -114,40 +137,52 @@ def eval_bc(global_step, agent, env, logger, goal_iter, device, num_eval_episode
             if i == 0:
                 current_budget = epi_budget[i] + 2
             else:
-                current_budget = epi_budget[i] - epi_budget[i-1] + 2
+                current_budget = epi_budget[i] - epi_budget[i - 1] + 2
             for _ in range(current_budget):
                 with torch.no_grad(), utils.eval_mode(agent):
-                    action = agent.act(obs,
-                                       current_goal,
-                                       global_step)
+                    action = agent.act(obs, current_goal, global_step)
                 time_step = env.step(action)
                 obs = np.asarray(time_step.observation)
                 obs = torch.as_tensor(obs, device=device)
-                dist = np.linalg.norm(time_step.observation - current_goal.cpu().numpy())
+                dist = np.linalg.norm(
+                    time_step.observation - current_goal.cpu().numpy()
+                )
                 dist2goal = min(dist2goal, dist)
                 video_recorder.record(env)
             episode_dist.append(dist2goal)
 
         total_dist2goal.append(episode_dist)
-        video_recorder.save(f'{global_step}.mp4')
+        video_recorder.save(f"{global_step}.mp4")
         video_recorder.render_goal(env, goal_physics[episode, -1])
         episode += 1
 
     total_dist2goal = np.array(total_dist2goal)
-    with logger.log_and_dump_ctx(global_step, ty='eval') as log:
-        log('dist2goal1', np.mean(total_dist2goal[:, 0]))
-        log('dist2goal2', np.mean(total_dist2goal[:, 1]))
-        log('dist2goal3', np.mean(total_dist2goal[:, 2]))
-        log('dist2goal4', np.mean(total_dist2goal[:, 3]))
-        log('dist2goal5', np.mean(total_dist2goal[:, 4]))
-        log('step', global_step)
+    with logger.log_and_dump_ctx(global_step, ty="eval") as log:
+        log("dist2goal1", np.mean(total_dist2goal[:, 0]))
+        log("dist2goal2", np.mean(total_dist2goal[:, 1]))
+        log("dist2goal3", np.mean(total_dist2goal[:, 2]))
+        log("dist2goal4", np.mean(total_dist2goal[:, 3]))
+        log("dist2goal5", np.mean(total_dist2goal[:, 4]))
+        log("step", global_step)
 
-def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episodes, video_recorder, replan=False):
+
+def eval_mdp(
+    global_step,
+    agent,
+    env,
+    logger,
+    goal_iter,
+    device,
+    num_eval_episodes,
+    video_recorder,
+    replan=False,
+):
     step, episode, total_dist2goal = 0, 0, []
     eval_until_episode = utils.Until(num_eval_episodes)
     batch = next(goal_iter)
     start_obs, start_physics, goal, goal_physics, time_budget = utils.to_torch(
-        batch, device)
+        batch, device
+    )
 
     while eval_until_episode(episode):
         time_step = env.reset()
@@ -157,7 +192,9 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
         video_recorder.init(env, enabled=True)
         if replan is False:
             with torch.no_grad(), utils.eval_mode(agent):
-                actions = agent.multi_goal_act(start_obs[episode].unsqueeze(0), goal[episode], time_budget[episode])
+                actions = agent.multi_goal_act(
+                    start_obs[episode].unsqueeze(0), goal[episode], time_budget[episode]
+                )
 
             states = []
             for a in actions:
@@ -177,7 +214,7 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
 
                 episode_dist.append(dist2goal)
 
-            video_recorder.save(f'{global_step}.mp4')
+            video_recorder.save(f"{global_step}.mp4")
             video_recorder.render_goal(env, goal_physics[episode, -1])
             episode += 1
             total_dist2goal.append(episode_dist)
@@ -191,7 +228,11 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
                 if i == episode_budget[goal_index]:
                     goal_index += 1
                 with torch.no_grad(), utils.eval_mode(agent):
-                    action = agent.multi_goal_act(obs.unsqueeze(0), goal[episode, goal_index:], time_budget[episode, goal_index:]-i)[0, ...]
+                    action = agent.multi_goal_act(
+                        obs.unsqueeze(0),
+                        goal[episode, goal_index:],
+                        time_budget[episode, goal_index:] - i,
+                    )[0, ...]
                     time_step = env.step(action)
                     video_recorder.record(env)
                     obs = np.asarray(time_step.observation)
@@ -211,26 +252,25 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
 
                 episode_dist.append(dist2goal)
 
-            video_recorder.save(f'{global_step}.mp4')
+            video_recorder.save(f"{global_step}.mp4")
             video_recorder.render_goal(env, goal_physics[episode, -1])
             episode += 1
             total_dist2goal.append(episode_dist)
 
-
     total_dist2goal = np.array(total_dist2goal)
-    with logger.log_and_dump_ctx(global_step, ty='eval') as log:
-        log('dist2goal1', np.mean(total_dist2goal[:, 0]))
-        log('dist2goal2', np.mean(total_dist2goal[:, 1]))
-        log('dist2goal3', np.mean(total_dist2goal[:, 2]))
-        log('dist2goal4', np.mean(total_dist2goal[:, 3]))
-        log('dist2goal5', np.mean(total_dist2goal[:, 4]))
-        log('step', global_step)
+    with logger.log_and_dump_ctx(global_step, ty="eval") as log:
+        log("dist2goal1", np.mean(total_dist2goal[:, 0]))
+        log("dist2goal2", np.mean(total_dist2goal[:, 1]))
+        log("dist2goal3", np.mean(total_dist2goal[:, 2]))
+        log("dist2goal4", np.mean(total_dist2goal[:, 3]))
+        log("dist2goal5", np.mean(total_dist2goal[:, 4]))
+        log("step", global_step)
 
 
-@hydra.main(config_path='.', config_name='eval')
+@hydra.main(config_path=".", config_name="eval")
 def main(cfg):
     work_dir = Path.cwd()
-    print(f'workspace: {work_dir}')
+    print(f"workspace: {work_dir}")
 
     utils.set_seed_everywhere(cfg.seed)
     device = torch.device(cfg.device)
@@ -240,50 +280,65 @@ def main(cfg):
 
     # create agent
     path = get_dir(cfg)
-    agent = hydra.utils.instantiate(cfg.agent,
-                                    obs_shape=env.observation_spec().shape,
-                                    action_shape=env.action_spec().shape,
-                                    path=path)
+    agent = hydra.utils.instantiate(
+        cfg.agent,
+        obs_shape=env.observation_spec().shape,
+        action_shape=env.action_spec().shape,
+        path=path,
+    )
 
     # create logger
     cfg.agent.obs_shape = env.observation_spec().shape
     cfg.agent.action_shape = env.action_spec().shape
     cfg.agent.transformer_cfg = agent.config
-    exp_name = '_'.join([cfg.agent.name,cfg.task, str(cfg.replan),str(cfg.seed)])
-    wandb_config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
-    wandb.init(project=cfg.project,
-               entity="maskdp",
-               name=exp_name,
-               config=wandb_config,
-               settings=wandb.Settings(
-                   start_method="thread",
-                   _disable_stats=True,
-               ),
-               mode="online" if cfg.use_wandb else "offline",
-               notes=cfg.notes,
-               )
-    logger = Logger(work_dir, use_tb=cfg.use_tb, use_wandb=cfg.use_wandb, mode='multi_goal')
+    exp_name = "_".join([cfg.agent.name, cfg.task, str(cfg.replan), str(cfg.seed)])
+    wandb_config = omegaconf.OmegaConf.to_container(
+        cfg, resolve=True, throw_on_missing=True
+    )
+    wandb.init(
+        project=cfg.project,
+        entity="maskdp",
+        name=exp_name,
+        config=wandb_config,
+        settings=wandb.Settings(
+            start_method="thread",
+            _disable_stats=True,
+        ),
+        mode="online" if cfg.use_wandb else "offline",
+        notes=cfg.notes,
+    )
+    logger = Logger(
+        work_dir, use_tb=cfg.use_tb, use_wandb=cfg.use_wandb, mode="multi_goal"
+    )
 
     # create replay buffer
-    data_specs = (env.observation_spec(), env.action_spec(), env.reward_spec(),
-                  env.discount_spec())
+    data_specs = (
+        env.observation_spec(),
+        env.action_spec(),
+        env.reward_spec(),
+        env.discount_spec(),
+    )
 
     # create data storage
     domain = get_domain(cfg.task)
 
     goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
 
-    print(f'goal dir: {goal_dir}')
+    print(f"goal dir: {goal_dir}")
 
-    goal_loader = make_replay_loader(env, goal_dir, cfg.goal_buffer_size,
-                                     cfg.num_eval_episodes,
-                                     cfg.goal_buffer_num_workers,
-                                     cfg.discount,
-                                     domain=domain,
-                                     traj_length=1,
-                                     mode='multi_goal',
-                                     cfg=agent.config,
-                                     relabel=False)
+    goal_loader = make_replay_loader(
+        env,
+        goal_dir,
+        cfg.goal_buffer_size,
+        cfg.num_eval_episodes,
+        cfg.goal_buffer_num_workers,
+        cfg.discount,
+        domain=domain,
+        traj_length=1,
+        mode="multi_goal",
+        cfg=agent.config,
+        relabel=False,
+    )
     goal_iter = iter(goal_loader)
 
     # create video recorders
@@ -295,20 +350,44 @@ def main(cfg):
     eval_every_step = utils.Every(cfg.eval_every_steps)
 
     if eval_every_step(global_step):
-        logger.log('eval_total_time', timer.total_time(), global_step)
-        if cfg.agent.name == 'mdp_goal':
-            eval_mdp(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
-                     video_recorder, replan=cfg.replan)
-        elif cfg.agent.name == 'bc_goal':
-            eval_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
-                    video_recorder)
-        elif cfg.agent.name == 'seq_goal':
-            eval_seq_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
-                        video_recorder)
+        logger.log("eval_total_time", timer.total_time(), global_step)
+        if cfg.agent.name == "mdp_goal":
+            eval_mdp(
+                global_step,
+                agent,
+                env,
+                logger,
+                goal_iter,
+                device,
+                cfg.num_eval_episodes,
+                video_recorder,
+                replan=cfg.replan,
+            )
+        elif cfg.agent.name == "bc_goal":
+            eval_bc(
+                global_step,
+                agent,
+                env,
+                logger,
+                goal_iter,
+                device,
+                cfg.num_eval_episodes,
+                video_recorder,
+            )
+        elif cfg.agent.name == "seq_goal":
+            eval_seq_bc(
+                global_step,
+                agent,
+                env,
+                logger,
+                goal_iter,
+                device,
+                cfg.num_eval_episodes,
+                video_recorder,
+            )
         else:
             raise NotImplementedError
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

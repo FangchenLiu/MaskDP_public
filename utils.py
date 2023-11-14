@@ -14,9 +14,10 @@ from pathlib import Path
 
 
 def get_norm(domain):
-    path=Path('/shared/fangchen/mdp_data_collection/mixed') / (domain+'.npz')
+    path = Path("/shared/fangchen/mdp_data_collection/mixed") / (domain + ".npz")
     data = np.load(path)
-    return data['mean'], data['std']
+    return data["mean"], data["std"]
+
 
 class eval_mode:
     def __init__(self, *models):
@@ -49,8 +50,7 @@ def chain(*iterables):
 
 def soft_update_params(net, target_net, tau):
     for param, target_param in zip(net.parameters(), target_net.parameters()):
-        target_param.data.copy_(tau * param.data +
-                                (1 - tau) * target_param.data)
+        target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
 
 
 def hard_update_params(net, target_net):
@@ -66,12 +66,12 @@ def weight_init(m):
     """Custom weight init for Conv2D and Linear layers."""
     if isinstance(m, nn.Linear):
         nn.init.orthogonal_(m.weight.data)
-        if hasattr(m.bias, 'data'):
+        if hasattr(m.bias, "data"):
             m.bias.data.fill_(0.0)
     elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        gain = nn.init.calculate_gain('relu')
+        gain = nn.init.calculate_gain("relu")
         nn.init.orthogonal_(m.weight.data, gain)
-        if hasattr(m.bias, 'data'):
+        if hasattr(m.bias, "data"):
             m.bias.data.fill_(0.0)
     elif isinstance(m, nn.LayerNorm):
         m.bias.data.zero_()
@@ -81,15 +81,15 @@ def weight_init(m):
 def grad_norm(params, norm_type=2.0):
     params = [p for p in params if p.grad is not None]
     total_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), norm_type) for p in params]),
-        norm_type)
+        torch.stack([torch.norm(p.grad.detach(), norm_type) for p in params]), norm_type
+    )
     return total_norm.item()
 
 
 def param_norm(params, norm_type=2.0):
     total_norm = torch.norm(
-        torch.stack([torch.norm(p.detach(), norm_type) for p in params]),
-        norm_type)
+        torch.stack([torch.norm(p.detach(), norm_type) for p in params]), norm_type
+    )
     return total_norm.item()
 
 
@@ -148,9 +148,7 @@ class TruncatedNormal(pyd.Normal):
 
     def sample(self, clip=None, sample_shape=torch.Size()):
         shape = self._extended_shape(sample_shape)
-        eps = _standard_normal(shape,
-                               dtype=self.loc.dtype,
-                               device=self.loc.device)
+        eps = _standard_normal(shape, dtype=self.loc.dtype, device=self.loc.device)
         eps *= self.scale
         if clip is not None:
             eps = torch.clamp(eps, -clip, clip)
@@ -185,7 +183,7 @@ class TanhTransform(pyd.transforms.Transform):
     def log_abs_det_jacobian(self, x, y):
         # We use a formula that is more numerically stable, see details in the following link
         # https://github.com/tensorflow/probability/commit/ef6bb176e0ebd1cf6e25c6b5cecdd2428c22963f#diff-e120f70e92e6741bca649f04fcd907b7
-        return 2. * (math.log(2.) - x - F.softplus(-2. * x))
+        return 2.0 * (math.log(2.0) - x - F.softplus(-2.0 * x))
 
 
 class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
@@ -209,12 +207,12 @@ def schedule(schdl, step):
     try:
         return float(schdl)
     except ValueError:
-        match = re.match(r'linear\((.+),(.+),(.+)\)', schdl)
+        match = re.match(r"linear\((.+),(.+),(.+)\)", schdl)
         if match:
             init, final, duration = [float(g) for g in match.groups()]
             mix = np.clip(step / duration, 0.0, 1.0)
             return (1.0 - mix) * init + mix * final
-        match = re.match(r'step_linear\((.+),(.+),(.+),(.+),(.+)\)', schdl)
+        match = re.match(r"step_linear\((.+),(.+),(.+),(.+),(.+)\)", schdl)
         if match:
             init, final1, duration1, final2, duration2 = [
                 float(g) for g in match.groups()
@@ -236,37 +234,31 @@ class RandomShiftsAug(nn.Module):
     def forward(self, x):
         x = x.float()
         n, t, c, h, w = x.size()
-        x = x.reshape(n*t, c, h, w)
+        x = x.reshape(n * t, c, h, w)
         assert h == w
         padding = tuple([self.pad] * 4)
-        x = F.pad(x, padding, 'replicate')
+        x = F.pad(x, padding, "replicate")
         eps = 1.0 / (h + 2 * self.pad)
-        arange = torch.linspace(-1.0 + eps,
-                                1.0 - eps,
-                                h + 2 * self.pad,
-                                device=x.device,
-                                dtype=x.dtype)[:h]
+        arange = torch.linspace(
+            -1.0 + eps, 1.0 - eps, h + 2 * self.pad, device=x.device, dtype=x.dtype
+        )[:h]
         arange = arange.unsqueeze(0).repeat(h, 1).unsqueeze(2)
         base_grid = torch.cat([arange, arange.transpose(1, 0)], dim=2)
-        base_grid = base_grid.unsqueeze(0).repeat(n*t, 1, 1, 1)
+        base_grid = base_grid.unsqueeze(0).repeat(n * t, 1, 1, 1)
 
-        shift = torch.randint(0,
-                              2 * self.pad + 1,
-                              size=(n*t, 1, 1, 2),
-                              device=x.device,
-                              dtype=x.dtype)
+        shift = torch.randint(
+            0, 2 * self.pad + 1, size=(n * t, 1, 1, 2), device=x.device, dtype=x.dtype
+        )
         shift *= 2.0 / (h + 2 * self.pad)
 
         grid = base_grid + shift
-        x = F.grid_sample(x,
-                             grid,
-                             padding_mode='zeros',
-                             align_corners=False)
+        x = F.grid_sample(x, grid, padding_mode="zeros", align_corners=False)
         return x.reshape(n, t, c, h, w)
 
 
 class RMS(object):
-    """running mean and std """
+    """running mean and std"""
+
     def __init__(self, device, epsilon=1e-4, shape=(1,)):
         self.M = torch.zeros(shape).to(device)
         self.S = torch.ones(shape).to(device)
@@ -276,9 +268,11 @@ class RMS(object):
         bs = x.size(0)
         delta = torch.mean(x, dim=0) - self.M
         new_M = self.M + delta * bs / (self.n + bs)
-        new_S = (self.S * self.n + torch.var(x, dim=0) * bs +
-                 torch.square(delta) * self.n * bs /
-                 (self.n + bs)) / (self.n + bs)
+        new_S = (
+            self.S * self.n
+            + torch.var(x, dim=0) * bs
+            + torch.square(delta) * self.n * bs / (self.n + bs)
+        ) / (self.n + bs)
 
         self.M = new_M
         self.S = new_S
@@ -288,7 +282,8 @@ class RMS(object):
 
 
 class PBE(object):
-    """particle-based entropy based on knn normalized by running mean """
+    """particle-based entropy based on knn normalized by running mean"""
+
     def __init__(self, rms, knn_clip, knn_k, knn_avg, knn_rms, device):
         self.rms = rms
         self.knn_rms = knn_rms
@@ -301,33 +296,40 @@ class PBE(object):
         source = target = rep
         b1, b2 = source.size(0), target.size(0)
         # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
-        sim_matrix = torch.norm(source[:, None, :].view(b1, 1, -1) -
-                                target[None, :, :].view(1, b2, -1),
-                                dim=-1,
-                                p=2)
-        reward, _ = sim_matrix.topk(self.knn_k,
-                                    dim=1,
-                                    largest=False,
-                                    sorted=True)  # (b1, k)
+        sim_matrix = torch.norm(
+            source[:, None, :].view(b1, 1, -1) - target[None, :, :].view(1, b2, -1),
+            dim=-1,
+            p=2,
+        )
+        reward, _ = sim_matrix.topk(
+            self.knn_k, dim=1, largest=False, sorted=True
+        )  # (b1, k)
         if not self.knn_avg:  # only keep k-th nearest neighbor
             reward = reward[:, -1]
             reward = reward.reshape(-1, 1)  # (b1, 1)
             reward /= self.rms(reward)[0] if self.knn_rms else 1.0
-            reward = torch.maximum(
-                reward - self.knn_clip,
-                torch.zeros_like(reward).to(self.device)
-            ) if self.knn_clip >= 0.0 else reward  # (b1, 1)
+            reward = (
+                torch.maximum(
+                    reward - self.knn_clip, torch.zeros_like(reward).to(self.device)
+                )
+                if self.knn_clip >= 0.0
+                else reward
+            )  # (b1, 1)
         else:  # average over all k nearest neighbors
             reward = reward.reshape(-1, 1)  # (b1 * k, 1)
             reward /= self.rms(reward)[0] if self.knn_rms else 1.0
-            reward = torch.maximum(
-                reward - self.knn_clip,
-                torch.zeros_like(reward).to(
-                    self.device)) if self.knn_clip >= 0.0 else reward
+            reward = (
+                torch.maximum(
+                    reward - self.knn_clip, torch.zeros_like(reward).to(self.device)
+                )
+                if self.knn_clip >= 0.0
+                else reward
+            )
             reward = reward.reshape((b1, self.knn_k))  # (b1, k)
             reward = reward.mean(dim=1, keepdim=True)  # (b1, 1)
         reward = torch.log(reward + 1.0)
         return reward
+
 
 def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     """
@@ -337,17 +339,18 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     """
     assert embed_dim % 2 == 0
     omega = np.arange(embed_dim // 2, dtype=np.float)
-    omega /= embed_dim / 2.
-    omega = 1. / 10000**omega  # (D/2,)
+    omega /= embed_dim / 2.0
+    omega = 1.0 / 10000**omega  # (D/2,)
     pos = np.arange(pos, dtype=np.float32)
     pos = pos.reshape(-1)  # (M,)
-    out = np.einsum('m,d->md', pos, omega)  # (M, D/2), outer product
+    out = np.einsum("m,d->md", pos, omega)  # (M, D/2), outer product
 
-    emb_sin = np.sin(out) # (M, D/2)
-    emb_cos = np.cos(out) # (M, D/2)
+    emb_sin = np.sin(out)  # (M, D/2)
+    emb_cos = np.cos(out)  # (M, D/2)
 
     emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
     return emb
+
 
 # --------------------------------------------------------
 # Interpolate position embeddings for high-resolution
@@ -362,9 +365,11 @@ def interpolate_pos_embed(pos_embed, new_size):
     print("Position interpolate from %d to %d" % (orig_size, new_size))
     pos_embed = pos_embed.permute(0, 2, 1)
     pos_tokens = torch.nn.functional.interpolate(
-        pos_embed, size=new_size, mode='linear', align_corners=False)
+        pos_embed, size=new_size, mode="linear", align_corners=False
+    )
     new_pos_embed = pos_tokens.permute(0, 2, 1)
     return new_pos_embed
+
 
 def get_one_hot(num_classes, labels):
     y = torch.eye(num_classes)

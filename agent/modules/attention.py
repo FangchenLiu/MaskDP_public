@@ -7,6 +7,7 @@ from torch.nn import functional as F
 
 logger = logging.getLogger(__name__)
 
+
 class mySequential(nn.Sequential):
     def forward(self, *inputs):
         for module in self._modules.values():
@@ -14,8 +15,9 @@ class mySequential(nn.Sequential):
                 inputs = module(*inputs)
             else:
                 raise NotImplementedError
-                #inputs = module(inputs)
+                # inputs = module(inputs)
         return inputs
+
 
 class CausalSelfAttention(nn.Module):
     """
@@ -40,27 +42,40 @@ class CausalSelfAttention(nn.Module):
         self.n_head = config.n_head
 
     def forward(self, x, mask):
-        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
+        (
+            B,
+            T,
+            C,
+        ) = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        k = self.key(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-        q = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-        v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        k = (
+            self.key(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        )  # (B, nh, T, hs)
+        q = (
+            self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        )  # (B, nh, T, hs)
+        v = (
+            self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        )  # (B, nh, T, hs)
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-        att = att.masked_fill(mask[:,:,:T,:T] == 0, float('-inf'))
+        att = att.masked_fill(mask[:, :, :T, :T] == 0, float("-inf"))
         att = F.softmax(att, dim=-1)
         att = self.attn_drop(att)
-        y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-        y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
+        y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+        y = (
+            y.transpose(1, 2).contiguous().view(B, T, C)
+        )  # re-assemble all head outputs side by side
 
         # output projection
         y = self.resid_drop(self.proj(y))
         return y
 
+
 class Block(nn.Module):
-    """ an unassuming Transformer block """
+    """an unassuming Transformer block"""
 
     def __init__(self, config):
         super().__init__()
@@ -79,20 +94,25 @@ class Block(nn.Module):
         x = x + self.mlp(self.ln2(x))
         return x
 
+
 class TwinQ(nn.Module):
     def __init__(self, config):
         super().__init__()
         hidden_dim = config.n_embd
         self.block_1 = mySequential(*[Block(config) for _ in range(config.n_layer)])
         self.block_2 = mySequential(*[Block(config) for _ in range(config.n_layer)])
-        self.q1 = nn.Sequential(nn.Tanh(),
-                                nn.Linear(hidden_dim, hidden_dim),
-                                nn.ReLU(inplace=True),
-                                nn.Linear(hidden_dim, 1))
-        self.q2 = nn.Sequential(nn.Tanh(),
-                                nn.Linear(hidden_dim, hidden_dim),
-                                nn.ReLU(inplace=True),
-                                nn.Linear(hidden_dim, 1))
+        self.q1 = nn.Sequential(
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1),
+        )
+        self.q2 = nn.Sequential(
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1),
+        )
         self.drop = nn.Dropout(config.embd_pdrop)
         self.ln_f = nn.LayerNorm(config.n_embd)
 

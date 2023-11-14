@@ -34,59 +34,64 @@ from dm_env import specs
 import numpy as np
 
 _ReachWorkspace = collections.namedtuple(
-    '_ReachWorkspace', ['target_bbox', 'tcp_bbox', 'arm_offset'])
+    "_ReachWorkspace", ["target_bbox", "tcp_bbox", "arm_offset"]
+)
 
 # Ensures that the props are not touching the table before settling.
 _PROP_Z_OFFSET = 0.001
 
 _DUPLO_WORKSPACE = _ReachWorkspace(
-    target_bbox=workspaces.BoundingBox(lower=(-0.1, -0.1, _PROP_Z_OFFSET),
-                                       upper=(0.1, 0.1, _PROP_Z_OFFSET)),
-    tcp_bbox=workspaces.BoundingBox(lower=(-0.1, -0.1, 0.2),
-                                    upper=(0.1, 0.1, 0.4)),
-    arm_offset=robots.ARM_OFFSET)
+    target_bbox=workspaces.BoundingBox(
+        lower=(-0.1, -0.1, _PROP_Z_OFFSET), upper=(0.1, 0.1, _PROP_Z_OFFSET)
+    ),
+    tcp_bbox=workspaces.BoundingBox(lower=(-0.1, -0.1, 0.2), upper=(0.1, 0.1, 0.4)),
+    arm_offset=robots.ARM_OFFSET,
+)
 
 _SITE_WORKSPACE = _ReachWorkspace(
-    target_bbox=workspaces.BoundingBox(lower=(-0.2, -0.2, 0.02),
-                                       upper=(0.2, 0.2, 0.4)),
-    tcp_bbox=workspaces.BoundingBox(lower=(-0.2, -0.2, 0.02),
-                                    upper=(0.2, 0.2, 0.4)),
-    arm_offset=robots.ARM_OFFSET)
+    target_bbox=workspaces.BoundingBox(lower=(-0.2, -0.2, 0.02), upper=(0.2, 0.2, 0.4)),
+    tcp_bbox=workspaces.BoundingBox(lower=(-0.2, -0.2, 0.02), upper=(0.2, 0.2, 0.4)),
+    arm_offset=robots.ARM_OFFSET,
+)
 
 _TARGET_RADIUS = 0.05
-_TIME_LIMIT = 10.
+_TIME_LIMIT = 10.0
 
-TASKS = [('reach_top_left', np.array([-0.09, 0.09, _PROP_Z_OFFSET])),
-         ('reach_top_right', np.array([0.09, 0.09, _PROP_Z_OFFSET])),
-         ('reach_bottom_left', np.array([-0.09, -0.09, _PROP_Z_OFFSET])),
-         ('reach_bottom_right', np.array([0.09, -0.09, _PROP_Z_OFFSET]))]
+TASKS = [
+    ("reach_top_left", np.array([-0.09, 0.09, _PROP_Z_OFFSET])),
+    ("reach_top_right", np.array([0.09, 0.09, _PROP_Z_OFFSET])),
+    ("reach_bottom_left", np.array([-0.09, -0.09, _PROP_Z_OFFSET])),
+    ("reach_bottom_right", np.array([0.09, -0.09, _PROP_Z_OFFSET])),
+]
 
 
 def make(task_id, obs_type, seed):
-    obs_settings = observations.VISION if obs_type == 'pixels' else observations.PERFECT_FEATURES
+    obs_settings = (
+        observations.VISION if obs_type == "pixels" else observations.PERFECT_FEATURES
+    )
     task = _reach(task_id, obs_settings=obs_settings, use_site=True)
-    return composer.Environment(task,
-                                time_limit=_TIME_LIMIT,
-                                random_state=seed)
+    return composer.Environment(task, time_limit=_TIME_LIMIT, random_state=seed)
 
 
 class MultiTaskReach(composer.Task):
     """Bring the hand close to a target prop or site."""
-    def __init__(self, task_id, arena, arm, hand, prop, obs_settings,
-                 workspace, control_timestep):
+
+    def __init__(
+        self, task_id, arena, arm, hand, prop, obs_settings, workspace, control_timestep
+    ):
         """Initializes a new `Reach` task.
 
-    Args:
-      arena: `composer.Entity` instance.
-      arm: `robot_base.RobotArm` instance.
-      hand: `robot_base.RobotHand` instance.
-      prop: `composer.Entity` instance specifying the prop to reach to, or None
-        in which case the target is a fixed site whose position is specified by
-        the workspace.
-      obs_settings: `observations.ObservationSettings` instance.
-      workspace: `_ReachWorkspace` specifying the placement of the prop and TCP.
-      control_timestep: Float specifying the control timestep in seconds.
-    """
+        Args:
+          arena: `composer.Entity` instance.
+          arm: `robot_base.RobotArm` instance.
+          hand: `robot_base.RobotHand` instance.
+          prop: `composer.Entity` instance specifying the prop to reach to, or None
+            in which case the target is a fixed site whose position is specified by
+            the workspace.
+          obs_settings: `observations.ObservationSettings` instance.
+          workspace: `_ReachWorkspace` specifying the placement of the prop and TCP.
+          control_timestep: Float specifying the control timestep in seconds.
+        """
         self._arena = arena
         self._arm = arm
         self._hand = hand
@@ -97,20 +102,20 @@ class MultiTaskReach(composer.Task):
             self._hand,
             self._arm,
             position=distributions.Uniform(*workspace.tcp_bbox),
-            quaternion=workspaces.DOWN_QUATERNION)
+            quaternion=workspaces.DOWN_QUATERNION,
+        )
 
         # Add custom camera observable.
         self._task_observables = cameras.add_camera_observables(
-            arena, obs_settings, cameras.FRONT_CLOSE)
+            arena, obs_settings, cameras.FRONT_CLOSE
+        )
 
-        if task_id == 'reach_multitask':
+        if task_id == "reach_multitask":
             self._targets = [target for (_, target) in TASKS]
         else:
-            self._targets = [
-                target for (task, target) in TASKS if task == task_id
-            ]
+            self._targets = [target for (task, target) in TASKS if task == task_id]
 
-        #target_pos_distribution = distributions.Uniform(*TASKS[task_id])
+        # target_pos_distribution = distributions.Uniform(*TASKS[task_id])
         self._prop = prop
         if prop:
             # The prop itself is used to visualize the target location.
@@ -120,27 +125,31 @@ class MultiTaskReach(composer.Task):
                 props=[prop],
                 position=target_pos_distribution,
                 quaternion=workspaces.uniform_z_rotation,
-                settle_physics=True)
+                settle_physics=True,
+            )
         else:
             if len(self._targets) == 1:
-                self._target = self._make_target_site(parent_entity=arena,
-                                                      visible=True)
+                self._target = self._make_target_site(parent_entity=arena, visible=True)
 
-            #obs = observable.MJCFFeature('pos', self._target)
-            #obs.configure(**obs_settings.prop_pose._asdict())
-            #self._task_observables['target_position'] = obs
+            # obs = observable.MJCFFeature('pos', self._target)
+            # obs.configure(**obs_settings.prop_pose._asdict())
+            # self._task_observables['target_position'] = obs
 
         # Add sites for visualizing the prop and target bounding boxes.
-        workspaces.add_bbox_site(body=self.root_entity.mjcf_model.worldbody,
-                                 lower=workspace.tcp_bbox.lower,
-                                 upper=workspace.tcp_bbox.upper,
-                                 rgba=constants.GREEN,
-                                 name='tcp_spawn_area')
-        workspaces.add_bbox_site(body=self.root_entity.mjcf_model.worldbody,
-                                 lower=workspace.target_bbox.lower,
-                                 upper=workspace.target_bbox.upper,
-                                 rgba=constants.BLUE,
-                                 name='target_spawn_area')
+        workspaces.add_bbox_site(
+            body=self.root_entity.mjcf_model.worldbody,
+            lower=workspace.tcp_bbox.lower,
+            upper=workspace.tcp_bbox.upper,
+            rgba=constants.GREEN,
+            name="tcp_spawn_area",
+        )
+        workspaces.add_bbox_site(
+            body=self.root_entity.mjcf_model.worldbody,
+            lower=workspace.target_bbox.lower,
+            upper=workspace.target_bbox.upper,
+            rgba=constants.BLUE,
+            name="target_spawn_area",
+        )
 
     def _make_target_site(self, parent_entity, visible):
         return workspaces.add_target_site(
@@ -148,7 +157,8 @@ class MultiTaskReach(composer.Task):
             radius=_TARGET_RADIUS,
             visible=visible,
             rgba=constants.RED,
-            name='target_site')
+            name="target_site",
+        )
 
     @property
     def root_entity(self):
@@ -164,7 +174,7 @@ class MultiTaskReach(composer.Task):
 
     def get_reward_spec(self):
         n = len(self._targets)
-        return specs.Array(shape=(n,), dtype=np.float32, name='reward')
+        return specs.Array(shape=(n,), dtype=np.float32, name="reward")
 
     @property
     def task_observables(self):
@@ -175,9 +185,9 @@ class MultiTaskReach(composer.Task):
         rews = []
         for target_pos in self._targets:
             distance = np.linalg.norm(hand_pos - target_pos)
-            reward = rewards.tolerance(distance,
-                                       bounds=(0, _TARGET_RADIUS),
-                                       margin=_TARGET_RADIUS)
+            reward = rewards.tolerance(
+                distance, bounds=(0, _TARGET_RADIUS), margin=_TARGET_RADIUS
+            )
             rews.append(reward)
         rews = np.array(rews).astype(np.float32)
         if len(self._targets) == 1:
@@ -197,14 +207,14 @@ class MultiTaskReach(composer.Task):
 def _reach(task_id, obs_settings, use_site):
     """Configure and instantiate a `Reach` task.
 
-  Args:
-    obs_settings: An `observations.ObservationSettings` instance.
-    use_site: Boolean, if True then the target will be a fixed site, otherwise
-      it will be a moveable Duplo brick.
+    Args:
+      obs_settings: An `observations.ObservationSettings` instance.
+      use_site: Boolean, if True then the target will be a fixed site, otherwise
+        it will be a moveable Duplo brick.
 
-  Returns:
-    An instance of `reach.Reach`.
-  """
+    Returns:
+      An instance of `reach.Reach`.
+    """
     arena = arenas.Standard()
     arm = robots.make_arm(obs_settings=obs_settings)
     hand = robots.make_hand(obs_settings=obs_settings)
@@ -213,14 +223,19 @@ def _reach(task_id, obs_settings, use_site):
         prop = None
     else:
         workspace = _DUPLO_WORKSPACE
-        prop = props.Duplo(observable_options=observations.make_options(
-            obs_settings, observations.FREEPROP_OBSERVABLES))
-    task = MultiTaskReach(task_id,
-                          arena=arena,
-                          arm=arm,
-                          hand=hand,
-                          prop=prop,
-                          obs_settings=obs_settings,
-                          workspace=workspace,
-                          control_timestep=constants.CONTROL_TIMESTEP)
+        prop = props.Duplo(
+            observable_options=observations.make_options(
+                obs_settings, observations.FREEPROP_OBSERVABLES
+            )
+        )
+    task = MultiTaskReach(
+        task_id,
+        arena=arena,
+        arm=arm,
+        hand=hand,
+        prop=prop,
+        obs_settings=obs_settings,
+        workspace=workspace,
+        control_timestep=constants.CONTROL_TIMESTEP,
+    )
     return task

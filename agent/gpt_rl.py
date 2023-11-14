@@ -12,20 +12,29 @@ from agent.modules.attention import Block, CausalSelfAttention, mySequential
 from agent.gpt import GPT
 import math
 
+
 class Actor(nn.Module):
     def __init__(self, obs_dim, action_dim, attention_length, finetune, config):
         super().__init__()
         self.n_embd = config.n_embd
         self.max_len = attention_length
-        print('attn length', self.max_len)
+        print("attn length", self.max_len)
         self.gpt = GPT(obs_dim, action_dim, config)
         self.ln = nn.LayerNorm(self.n_embd)
-        self.action_head = nn.Sequential(nn.Tanh(), nn.Linear(self.n_embd, self.n_embd), nn.ReLU(inplace=True), \
-                                         nn.Linear(self.n_embd, action_dim), nn.Tanh())
+        self.action_head = nn.Sequential(
+            nn.Tanh(),
+            nn.Linear(self.n_embd, self.n_embd),
+            nn.ReLU(inplace=True),
+            nn.Linear(self.n_embd, action_dim),
+            nn.Tanh(),
+        )
         self.config = config
         self.finetune = finetune
         self.apply(utils.weight_init)
-        self.register_buffer('attn_mask', torch.tril(torch.ones(self.max_len, self.max_len))[None, None, ...])
+        self.register_buffer(
+            "attn_mask",
+            torch.tril(torch.ones(self.max_len, self.max_len))[None, None, ...],
+        )
 
     def freeze_layers(self):
         for param in self.gpt.parameters():
@@ -49,19 +58,24 @@ class Actor(nn.Module):
         dist = utils.TruncatedNormal(x, std)
         return dist
 
+
 class TwinQHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         hidden_dim = config.n_embd
         self.ln = nn.LayerNorm(hidden_dim)
-        self.q1 = nn.Sequential(nn.Tanh(),
-                                nn.Linear(hidden_dim, hidden_dim),
-                                nn.ReLU(inplace=True),
-                                nn.Linear(hidden_dim, 1))
-        self.q2 = nn.Sequential(nn.Tanh(),
-                                nn.Linear(hidden_dim, hidden_dim),
-                                nn.ReLU(inplace=True),
-                                nn.Linear(hidden_dim, 1))
+        self.q1 = nn.Sequential(
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1),
+        )
+        self.q2 = nn.Sequential(
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, 1),
+        )
         self.apply(utils.weight_init)
 
     def forward(self, x):
@@ -71,12 +85,13 @@ class TwinQHead(nn.Module):
 
         return q1, q2
 
+
 class Critic(nn.Module):
     def __init__(self, obs_dim, action_dim, attention_length, finetune, config):
         super().__init__()
         self.n_embd = config.n_embd
         self.max_len = attention_length
-        print('attn length', self.max_len)
+        print("attn length", self.max_len)
         self.finetune = finetune
         self.gpt = GPT(obs_dim, action_dim, config)
         # q1 and q2
@@ -85,15 +100,17 @@ class Critic(nn.Module):
         for param in self.target_q.parameters():
             param.requires_grad = False
         self.config = config
-        self.register_buffer('attn_mask', torch.tril(torch.ones(self.max_len*2, self.max_len*2))[None, None, ...])
+        self.register_buffer(
+            "attn_mask",
+            torch.tril(torch.ones(self.max_len * 2, self.max_len * 2))[None, None, ...],
+        )
         self.apply(utils.weight_init)
 
     def freeze_layers(self):
-
         for param in self.gpt.parameters():
             param.requires_grad = False
 
-        if self.finetune == 'encoder':
+        if self.finetune == "encoder":
             for b in self.gpt.blocks[:3]:
                 for param in b.parameters():
                     param.requires_grad = True
@@ -102,8 +119,12 @@ class Critic(nn.Module):
         batch_size, T, obs_dim = obs_seq.size()
         state = self.gpt.state_embed(obs_seq)
         action = self.gpt.action_embed(action_seq)
-        x = torch.stack([state, action], dim=1).permute(0, 2, 1, 3).reshape(batch_size, 2*T, self.config.n_embd)
-        x += self.gpt.pos_embed[:, :2*T]
+        x = (
+            torch.stack([state, action], dim=1)
+            .permute(0, 2, 1, 3)
+            .reshape(batch_size, 2 * T, self.config.n_embd)
+        )
+        x += self.gpt.pos_embed[:, : 2 * T]
         # encoder
         for blk in self.gpt.blocks[:3]:
             x = blk(x, self.attn_mask)
@@ -115,25 +136,28 @@ class Critic(nn.Module):
             q1, q2 = self.q(x[:, 1::2])
             return q1, q2
 
+
 class MTGPTAgent:
-    def __init__(self,
-                 name,
-                 obs_shape,
-                 action_shape,
-                 device,
-                 lr,
-                 critic_target_tau,
-                 stddev_schedule,
-                 nstep,
-                 batch_size,
-                 stddev_clip,
-                 use_tb,
-                 finetune_actor,
-                 finetune_critic,
-                 attn_length,
-                 transformer_cfg,
-                 has_next_action=False,
-                 path=None):
+    def __init__(
+        self,
+        name,
+        obs_shape,
+        action_shape,
+        device,
+        lr,
+        critic_target_tau,
+        stddev_schedule,
+        nstep,
+        batch_size,
+        stddev_clip,
+        use_tb,
+        finetune_actor,
+        finetune_critic,
+        attn_length,
+        transformer_cfg,
+        has_next_action=False,
+        path=None,
+    ):
         self.action_dim = action_shape[0]
         self.lr = lr
         self.device = device
@@ -145,25 +169,47 @@ class MTGPTAgent:
         # init from snapshot
         payload = None
         if path is not None:
-            print('loading existing model...')
+            print("loading existing model...")
             payload = torch.load(path)
-            self.config = payload['cfg']
+            self.config = payload["cfg"]
         else:
             self.config = transformer_cfg
         self.attention_length = attn_length
-        self.actor = Actor(obs_shape[0], action_shape[0], self.attention_length, finetune_actor, self.config).to(device)
-        self.critic = Critic(obs_shape[0], action_shape[0], self.attention_length, finetune_critic, self.config).to(device)
+        self.actor = Actor(
+            obs_shape[0],
+            action_shape[0],
+            self.attention_length,
+            finetune_actor,
+            self.config,
+        ).to(device)
+        self.critic = Critic(
+            obs_shape[0],
+            action_shape[0],
+            self.attention_length,
+            finetune_critic,
+            self.config,
+        ).to(device)
         self.critic.target_q.load_state_dict(self.critic.q.state_dict())
         if path is not None:
-            self.actor.gpt.load_state_dict(payload['model'])
-            self.critic.gpt.load_state_dict(payload['model'])
+            self.actor.gpt.load_state_dict(payload["model"])
+            self.critic.gpt.load_state_dict(payload["model"])
         # optimizers
         self.actor.freeze_layers()
         self.critic.freeze_layers()
-        self.actor_opt = torch.optim.Adam(filter(lambda p: p.requires_grad, self.actor.parameters()), lr=self.lr)
-        self.critic_opt = torch.optim.Adam(filter(lambda p: p.requires_grad, self.critic.parameters()), lr=self.lr)
-        actor_param = sum(p.numel() for p in filter(lambda p: p.requires_grad, self.actor.parameters()))
-        critic_param = sum(p.numel() for p in filter(lambda p: p.requires_grad, self.critic.parameters()))
+        self.actor_opt = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.actor.parameters()), lr=self.lr
+        )
+        self.critic_opt = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.critic.parameters()), lr=self.lr
+        )
+        actor_param = sum(
+            p.numel()
+            for p in filter(lambda p: p.requires_grad, self.actor.parameters())
+        )
+        critic_param = sum(
+            p.numel()
+            for p in filter(lambda p: p.requires_grad, self.critic.parameters())
+        )
         print("number of parameters to be tuned: %e, %e", actor_param, critic_param)
         self.train()
 
@@ -198,10 +244,10 @@ class MTGPTAgent:
         critic_loss = F.mse_loss(Q1, target_Q) + F.mse_loss(Q2, target_Q)
 
         if self.use_tb:
-            metrics['critic_target_q'] = target_Q.mean().item()
-            metrics['critic_q1'] = Q1.mean().item()
-            metrics['critic_q2'] = Q2.mean().item()
-            metrics['critic_loss'] = critic_loss.item()
+            metrics["critic_target_q"] = target_Q.mean().item()
+            metrics["critic_q1"] = Q1.mean().item()
+            metrics["critic_q2"] = Q2.mean().item()
+            metrics["critic_loss"] = critic_loss.item()
 
         # optimize critic
         self.critic_opt.zero_grad(set_to_none=True)
@@ -225,8 +271,8 @@ class MTGPTAgent:
         self.actor_opt.step()
 
         if self.use_tb:
-            metrics['actor_loss'] = actor_loss.item()
-            metrics['actor_ent'] = policy.entropy().sum(dim=-1).mean().item()
+            metrics["actor_loss"] = actor_loss.item()
+            metrics["actor_ent"] = policy.entropy().sum(dim=-1).mean().item()
 
         return metrics
 
@@ -234,21 +280,22 @@ class MTGPTAgent:
         metrics = dict()
 
         batch = next(replay_iter)
-        obs, action, reward, discount, next_obs, _ = utils.to_torch(
-            batch, self.device)
+        obs, action, reward, discount, next_obs, _ = utils.to_torch(batch, self.device)
 
         if self.use_tb:
-            metrics['batch_reward'] = reward.mean().item()
+            metrics["batch_reward"] = reward.mean().item()
 
         # update critic
         metrics.update(
-            self.update_critic(obs, action, next_obs, reward, discount, step))
+            self.update_critic(obs, action, next_obs, reward, discount, step)
+        )
 
         # update actor
         metrics.update(self.update_actor(obs, action, step))
 
         # update critic target
-        utils.soft_update_params(self.critic.q, self.critic.target_q,
-                                 self.critic_target_tau)
+        utils.soft_update_params(
+            self.critic.q, self.critic.target_q, self.critic_target_tau
+        )
 
         return metrics

@@ -10,6 +10,7 @@ from dm_control.utils import rewards
 from einops import rearrange, reduce, repeat
 from agent.modules.attention import Block
 
+
 class GPT(nn.Module):
     def __init__(self, obs_dim, action_dim, config):
         super().__init__()
@@ -19,15 +20,27 @@ class GPT(nn.Module):
         self.state_embed = nn.Linear(obs_dim, self.n_embd)
         self.action_embed = nn.Linear(action_dim, self.n_embd)
         self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layer)])
-        self.action_head = nn.Sequential(nn.LayerNorm(self.n_embd), nn.ReLU(inplace=True), nn.Linear(self.n_embd, action_dim), nn.Tanh()) # decoder to patch
-        self.state_head = nn.Sequential(nn.LayerNorm(self.n_embd), nn.ReLU(inplace=True), nn.Linear(self.n_embd, obs_dim))
+        self.action_head = nn.Sequential(
+            nn.LayerNorm(self.n_embd),
+            nn.ReLU(inplace=True),
+            nn.Linear(self.n_embd, action_dim),
+            nn.Tanh(),
+        )  # decoder to patch
+        self.state_head = nn.Sequential(
+            nn.LayerNorm(self.n_embd),
+            nn.ReLU(inplace=True),
+            nn.Linear(self.n_embd, obs_dim),
+        )
         self.initialize_weights()
 
     def initialize_weights(self):
         pos_embed = utils.get_1d_sincos_pos_embed_from_grid(self.n_embd, self.max_len)
         pe = torch.from_numpy(pos_embed).float().unsqueeze(0)
-        self.register_buffer('pos_embed', pe)
-        self.register_buffer('attn_mask', torch.tril(torch.ones(self.max_len, self.max_len))[None, None, ...])
+        self.register_buffer("pos_embed", pe)
+        self.register_buffer(
+            "attn_mask",
+            torch.tril(torch.ones(self.max_len, self.max_len))[None, None, ...],
+        )
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -45,7 +58,11 @@ class GPT(nn.Module):
         # goal: batch_size, obs_dim
         s = self.state_embed(obs)
         a = self.action_embed(action)
-        x = torch.stack([s, a], dim=1).permute(0, 2, 1, 3).reshape(batch_size, 2*T, self.n_embd)
+        x = (
+            torch.stack([s, a], dim=1)
+            .permute(0, 2, 1, 3)
+            .reshape(batch_size, 2 * T, self.n_embd)
+        )
         # add pos embed
         x = x + self.pos_embed
 
@@ -60,18 +77,19 @@ class GPT(nn.Module):
 
 
 class GPTAgent:
-    def __init__(self,
-                 name,
-                 obs_shape,
-                 action_shape,
-                 device,
-                 lr,
-                 batch_size,
-                 stddev_schedule,
-                 use_tb,
-                 transformer_cfg,
-                 path=None):
-
+    def __init__(
+        self,
+        name,
+        obs_shape,
+        action_shape,
+        device,
+        lr,
+        batch_size,
+        stddev_schedule,
+        use_tb,
+        transformer_cfg,
+        path=None,
+    ):
         self.action_dim = action_shape[0]
         self.lr = lr
         self.device = device
@@ -81,18 +99,20 @@ class GPTAgent:
         # init from snapshot
         payload = None
         if path is not None:
-            print('loading existing model...')
+            print("loading existing model...")
             payload = torch.load(path)
-            self.config = payload['cfg']
+            self.config = payload["cfg"]
         else:
             self.config = transformer_cfg
         self.model = GPT(obs_shape[0], action_shape[0], self.config).to(device)
         if path is not None:
-            self.model.load_state_dict(payload['model'])
+            self.model.load_state_dict(payload["model"])
         # optimizers
         self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.norm = self.config.norm
-        print("number of parameters: %e", sum(p.numel() for p in self.model.parameters()))
+        print(
+            "number of parameters: %e", sum(p.numel() for p in self.model.parameters())
+        )
         self.train()
 
     def train(self, training=True):
@@ -112,12 +132,12 @@ class GPTAgent:
         pred_s, pred_a = self.model(obs, action)
 
         # no normalization
-        if self.norm == 'l2':
+        if self.norm == "l2":
             next_obs = next_obs / torch.norm(next_obs, dim=-1, keepdim=True)
-        elif self.norm == 'mae':
+        elif self.norm == "mae":
             mean = next_obs.mean(dim=-1, keepdim=True)
             var = next_obs.var(dim=-1, keepdim=True)
-            next_obs = (next_obs - mean) / (var + 1.e-6)**.5
+            next_obs = (next_obs - mean) / (var + 1.0e-6) ** 0.5
 
         loss_s = ((pred_s - next_obs) ** 2).mean()
         loss_a = ((pred_a - action) ** 2).mean()
@@ -128,8 +148,8 @@ class GPTAgent:
         self.opt.step()
 
         if self.use_tb:
-            metrics['state_loss'] = loss_s.item()
-            metrics['action_loss'] = loss_a.item()
+            metrics["state_loss"] = loss_s.item()
+            metrics["action_loss"] = loss_a.item()
 
         return metrics
 
@@ -137,11 +157,10 @@ class GPTAgent:
         metrics = dict()
 
         batch = next(replay_iter)
-        obs, action, reward, discount, next_obs, _ = utils.to_torch(
-            batch, self.device)
+        obs, action, reward, discount, next_obs, _ = utils.to_torch(batch, self.device)
 
         if self.use_tb:
-            metrics['batch_reward'] = reward.mean().item()
+            metrics["batch_reward"] = reward.mean().item()
 
         # update actor
         metrics.update(self.update_actor(obs, action, next_obs, step))
