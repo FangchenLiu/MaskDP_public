@@ -35,16 +35,10 @@ def get_data_seed(seed, num_data_seeds):
     return (seed - 1) % num_data_seeds + 1
 
 def get_dir(cfg):
-    if cfg.mt is False:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(
-            cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
-    else:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(
-            cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
+    snapshot_base_dir = Path(cfg.snapshot_base_dir)
+    snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
+    snapshot = snapshot_dir / str(
+        cfg.seed) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 def eval_autoregressive(global_step, agent, env, logger, context_iter, device, num_eval_episodes, video_recorder, cfg):
@@ -151,7 +145,7 @@ def eval_parallel(global_step, agent, env, logger, context_iter, device, num_eva
         log('episode_length', step / episode)
         log('step', global_step)
 
-@hydra.main(config_path='.', config_name='finetune')
+@hydra.main(config_path='.', config_name='eval')
 def main(cfg):
     work_dir = Path.cwd()
     print(f'workspace: {work_dir}')
@@ -174,10 +168,10 @@ def main(cfg):
     # create logger
     cfg.agent.obs_shape = env.observation_spec().shape
     cfg.agent.action_shape = env.action_spec().shape
-    exp_name = '_'.join([cfg.agent.name,cfg.task,cfg.finetuned_data, cfg.pretrained_data,str(cfg.seed)])
+    exp_name = '_'.join([cfg.agent.name,cfg.task,str(cfg.seed)])
     wandb_config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     wandb.init(project=cfg.project,
-               entity="value_transformer",
+               entity="maskdp",
                name=exp_name,
                config=wandb_config,
                settings=wandb.Settings(
@@ -196,12 +190,11 @@ def main(cfg):
     # create data storage
     domain = get_domain(cfg.task)
 
-    replay_dir = Path(cfg.replay_buffer_dir) / domain / cfg.task
-    goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
+    context_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
 
-    print(f'replay dir, context dir: {replay_dir, goal_dir}')
+    print(f'context dir: {context_dir}')
 
-    context_loader = make_replay_loader(env, goal_dir, cfg.goal_buffer_size,
+    context_loader = make_replay_loader(env, context_dir, cfg.goal_buffer_size,
                                      cfg.num_eval_episodes,
                                      cfg.goal_buffer_num_workers,
                                      cfg.discount,
@@ -217,35 +210,16 @@ def main(cfg):
     timer = utils.Timer()
 
     global_step = 0
-
-    train_until_step = utils.Until(cfg.num_grad_steps)
     eval_every_step = utils.Every(cfg.eval_every_steps)
-    log_every_step = utils.Every(cfg.log_every_steps)
 
-    while train_until_step(global_step):
-        # try to evaluate
-        if eval_every_step(global_step):
-            logger.log('eval_total_time', timer.total_time(), global_step)
-            if cfg.replan is False:
-                eval_parallel(global_step, agent, env, logger, context_iter, device, cfg.num_eval_episodes,
-                         video_recorder)
-            else:
-                eval_autoregressive(global_step, agent, env, logger, context_iter, device, cfg.num_eval_episodes,
-                                    video_recorder, cfg)
-        global_step += 1
-
-        '''
-        metrics = agent.update(replay_iter)
-        logger.log_metrics(metrics, global_step, ty='train')
-        if log_every_step(global_step):
-            elapsed_time, total_time = timer.reset()
-            with logger.log_and_dump_ctx(global_step, ty='train') as log:
-                log('fps', cfg.log_every_steps / elapsed_time)
-                log('total_time', total_time)
-                log('step', global_step)
-        
-        '''
-        break
+    if eval_every_step(global_step):
+        logger.log('eval_total_time', timer.total_time(), global_step)
+        if cfg.replan is False:
+            eval_parallel(global_step, agent, env, logger, context_iter, device, cfg.num_eval_episodes,
+                          video_recorder)
+        else:
+            eval_autoregressive(global_step, agent, env, logger, context_iter, device, cfg.num_eval_episodes,
+                                video_recorder, cfg)
 
 
 if __name__ == '__main__':

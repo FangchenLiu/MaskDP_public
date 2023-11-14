@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CUDA_VISIBLE_DEVICES=4 python pretrain_mdp_mt.py \
+CUDA_VISIBLE_DEVICES=4 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.transformer_cfg.traj_length=64 \
@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=4 python pretrain_mdp_mt.py \
     use_wandb=True &
 sleep 30
 
-CUDA_VISIBLE_DEVICES=5 python pretrain_mdp_mt.py \
+CUDA_VISIBLE_DEVICES=5 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.transformer_cfg.traj_length=64 \
@@ -38,8 +38,7 @@ CUDA_VISIBLE_DEVICES=5 python pretrain_mdp_mt.py \
     use_wandb=True &
 sleep 30
 
-CUDA_VISIBLE_DEVICES=6 python pretrain_mdp_mt.py \
-    pretrained_data=expert \
+CUDA_VISIBLE_DEVICES=6 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.mask_ratio=[0.15]\
@@ -58,8 +57,7 @@ CUDA_VISIBLE_DEVICES=6 python pretrain_mdp_mt.py \
     project=mdp_ablation \
     use_wandb=True &
 sleep 30
-CUDA_VISIBLE_DEVICES=7 python pretrain_mdp_mt.py \
-    pretrained_data=expert \
+CUDA_VISIBLE_DEVICES=7 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.mask_ratio=[0.5]\

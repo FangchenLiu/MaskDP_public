@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CUDA_VISIBLE_DEVICES=1 python pretrain_mdp_mt.py \
+CUDA_VISIBLE_DEVICES=1 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.transformer_cfg.traj_length=64 \
@@ -17,7 +17,7 @@ CUDA_VISIBLE_DEVICES=1 python pretrain_mdp_mt.py \
     project=final_mt_mdp \
     use_wandb=True &
 sleep 30
-CUDA_VISIBLE_DEVICES=2 python pretrain_mdp_mt.py \
+CUDA_VISIBLE_DEVICES=2 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.transformer_cfg.traj_length=64 \
@@ -35,7 +35,7 @@ CUDA_VISIBLE_DEVICES=2 python pretrain_mdp_mt.py \
     project=final_mt_mdp \
     use_wandb=True &
 sleep 30
-CUDA_VISIBLE_DEVICES=3 python pretrain_mdp_mt.py \
+CUDA_VISIBLE_DEVICES=3 python pretrain.py \
     agent=mdp \
     agent.batch_size=384 \
     agent.transformer_cfg.traj_length=64 \

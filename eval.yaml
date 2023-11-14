@@ -2,9 +2,6 @@ defaults:
   - agent: mdp_goal # can be mdp_goal or mdp_prompt
   - override hydra/launcher: submitit_local
 
-# unsupervised exploration
-pretrained_data: expert # [mixed, semi, sup, unsup]
-finetuned_data: expert # [mixed, semi, sup, unsup]
 # task settings
 task: walker_walk
 discount: 0.99
@@ -16,15 +13,12 @@ eval_every_steps: 10000
 num_eval_episodes: 100
 # snapshot
 snapshot_ts: 100000
-snapshot_base_dir: /shared/hao/research/value_transformer/output/2022.05.03/154234_mdp/snapshot
+snapshot_base_dir: /path/to/snapshot/dir
 # dataset
-replay_buffer_dir: /shared/fangchen/rl_data_collection/expert
-replay_buffer_size: 100000000
-replay_buffer_num_workers: 16
 batch_size: ${agent.batch_size}
 
 # goal loader dataset
-goal_buffer_dir: /shared/fangchen/rl_data_collection/expert
+goal_buffer_dir: /path/to/goal/buffer/maskdp_eval
 goal_buffer_size: 100000000
 goal_buffer_num_workers: 4
 
@@ -37,9 +31,8 @@ use_wandb: true
 project: mdp-fangchen-finetune
 notes: "finetune"
 replan: true
-mt: false
 
 
 hydra:
   run:
-    dir: /shared/fangchen/models/finetune/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}
+    dir: /path/to/eval/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}

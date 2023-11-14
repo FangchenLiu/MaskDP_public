@@ -71,10 +71,10 @@ def main(cfg):
     # create logger
     cfg.agent.obs_shape = env.observation_spec().shape
     cfg.agent.action_shape = env.action_spec().shape
-    exp_name = '_'.join([cfg.agent.name,domain,cfg.pretrained_data,str(cfg.seed)])
+    exp_name = '_'.join([cfg.agent.name,domain,str(cfg.seed)])
     wandb_config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     wandb.init(project=cfg.project,
-               entity="value_transformer",
+               entity="maskdp",
                name=exp_name,
                config=wandb_config,
                settings=wandb.Settings(

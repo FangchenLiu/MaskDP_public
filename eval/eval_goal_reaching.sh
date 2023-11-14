@@ -5,35 +5,29 @@ env=('quadruped_run' 'quadruped_walk' 'walker_run' 'walker_walk' 'walker_stand' 
 for i in "${!env[@]}"
 do
    CUDA_VISIBLE_DEVICES=6 python eval_multigoal.py \
-        pretrained_data=expert \
         agent=mdp_goal \
         agent.batch_size=384 \
         seed=2\
         num_eval_episodes=100 \
         task=${env[$i]} \
         snapshot_base_dir=../../../your_basedir_name/${exp_mdp[$i]}/snapshot \
-        replay_buffer_dir=/path/to/your/replay/buffer \
-        goal_buffer_dir=/path/to/your/replay/buffer \
+        goal_buffer_dir=/path/to/maskdp_eval/expert \
         snapshot_ts=300000 \
         project=eval-multi-goal \
-        mt=true \
         replan=false \
         use_wandb=True &
         sleep 30
 
    CUDA_VISIBLE_DEVICES=7 python eval_multigoal.py \
-        pretrained_data=expert \
         agent=mdp_goal \
         agent.batch_size=384 \
         seed=2\
         num_eval_episodes=100 \
         task=${env[$i]} \
         snapshot_base_dir=../../../your_basedir_name/${exp_mdp[$i]}/snapshot \
-        replay_buffer_dir=/path/to/your/replay/buffer \
-        goal_buffer_dir=/path/to/your/replay/buffer \
+        goal_buffer_dir=/path/to/maskdp_eval/expert \
         snapshot_ts=300000 \
         project=eval-multi-goal \
-        mt=true \
         replan=true \
         use_wandb=True &
         sleep 30

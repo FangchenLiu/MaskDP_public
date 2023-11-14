@@ -35,16 +35,10 @@ def get_data_seed(seed, num_data_seeds):
     return (seed - 1) % num_data_seeds + 1
 
 def get_dir(cfg):
-    if cfg.mt is False:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(
-            1) / f'snapshot_{cfg.snapshot_ts}.pt'
-    else:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(
-            1) / f'snapshot_{cfg.snapshot_ts}.pt'
+    snapshot_base_dir = Path(cfg.snapshot_base_dir)
+    snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
+    snapshot = snapshot_dir / str(
+        1) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 
@@ -84,7 +78,7 @@ def eval(global_step, agent, env, logger, num_eval_episodes, video_recorder, max
         log('step', global_step)
 
 
-@hydra.main(config_path='.', config_name='finetune_multitask')
+@hydra.main(config_path='.', config_name='finetune_rl')
 def main(cfg):
     work_dir = Path.cwd()
     print(f'workspace: {work_dir}')
@@ -106,10 +100,10 @@ def main(cfg):
 
     cfg.agent.transformer_cfg = agent.config
 
-    exp_name = '_'.join([cfg.agent.name,get_domain(cfg.task),cfg.finetuned_data, cfg.pretrained_data,str(cfg.seed)])
+    exp_name = '_'.join([cfg.agent.name,get_domain(cfg.task),cfg.finetuned_data,str(cfg.seed)])
     wandb_config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     wandb.init(project=cfg.project,
-               entity="value_transformer",
+               entity="maskdp",
                name=exp_name,
                config=wandb_config,
                settings=wandb.Settings(
@@ -120,7 +114,7 @@ def main(cfg):
                notes=cfg.notes,
                )
 
-    logger = Logger(work_dir, use_tb=cfg.use_tb, use_wandb=cfg.use_wandb, mode='mtrl')
+    logger = Logger(work_dir, use_tb=cfg.use_tb, use_wandb=cfg.use_wandb, mode='offline-rl')
 
     # create replay buffer
     data_specs = (env.observation_spec(), env.action_spec(), env.reward_spec(),
@@ -130,10 +124,10 @@ def main(cfg):
     domain = get_domain(cfg.task)
     datasets_dir = work_dir / cfg.replay_buffer_dir
     if str(cfg.finetuned_data) == 'unsup':
-        print('using unsup')
+        print('using unsupervised data')
         replay_dir = datasets_dir.resolve() / domain
     else:
-        print('using sup')
+        print('using supervised data')
         replay_dir = datasets_dir.resolve() / domain / cfg.task
     print(replay_dir)
     replay_loader = make_replay_loader(env, replay_dir, cfg.replay_buffer_size,

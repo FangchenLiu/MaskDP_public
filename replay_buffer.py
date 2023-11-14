@@ -46,7 +46,6 @@ def relable_episode(env, episode):
 
 class OfflineReplayBuffer(IterableDataset):
     def __init__(self, env, replay_dir, max_size, num_workers, discount, domain, traj_length, mode, cfg, relabel, obs):
-        print('in SINGLE replay buffer')
         self._env = env
         self._replay_dir = replay_dir
         self._domain = domain

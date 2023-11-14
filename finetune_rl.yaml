@@ -1,12 +1,11 @@
 defaults:
-  - agent: mdp_multitask # can be mdp_goal or mdp_prompt
+  - agent: mdp_rl # can be mdp_goal or mdp_prompt
   - override hydra/launcher: submitit_local
 
 # unsupervised exploration
-pretrained_data: mixed # [mixed, semi, sup, unsup]
-finetuned_data: expert # [mixed, semi, sup, unsup, expert]
+finetuned_data: unsup # [mixed, semi, sup, unsup, expert]
 # task settings
-task: [quadruped_run,quadruped_walk]
+task: walker_walk
 discount: 0.99
 # train settings
 num_grad_steps: 40000
@@ -18,7 +17,7 @@ num_eval_episodes: 10
 snapshot_ts: 400000
 snapshot_base_dir: ../../../output/2022.05.12/051229_mdp/snapshot
 # dataset
-replay_buffer_dir: /shared/fangchen/rl_data_collection/unsup
+replay_buffer_dir: /path/to/maskdp_eval/unsup
 replay_buffer_size: 1000000
 replay_buffer_num_workers: 16
 batch_size: ${agent.batch_size}
@@ -31,9 +30,8 @@ use_tb: true
 use_wandb: true
 project: fangchen-eval-mdp-mtrl
 notes: "finetune"
-mt: true
 
 
 hydra:
   run:
-    dir: /shared/fangchen/models/mt/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}
+    dir: /path/to/finetune/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}

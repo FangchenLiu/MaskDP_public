@@ -35,14 +35,9 @@ def get_data_seed(seed, num_data_seeds):
     return (seed - 1) % num_data_seeds + 1
 
 def get_dir(cfg):
-    if cfg.mt is False:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / cfg.task
-        snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
-    else:
-        snapshot_base_dir = Path(cfg.snapshot_base_dir)
-        snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
-        snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
+    snapshot_base_dir = Path(cfg.snapshot_base_dir)
+    snapshot_dir = snapshot_base_dir / get_domain(cfg.task)
+    snapshot = snapshot_dir / str(1) / f'snapshot_{cfg.snapshot_ts}.pt'
     return snapshot
 
 def eval_seq_bc(global_step, agent, env, logger, goal_iter, device, num_eval_episodes, video_recorder):
@@ -232,7 +227,7 @@ def eval_mdp(global_step, agent, env, logger, goal_iter, device, num_eval_episod
         log('step', global_step)
 
 
-@hydra.main(config_path='.', config_name='finetune')
+@hydra.main(config_path='.', config_name='eval')
 def main(cfg):
     work_dir = Path.cwd()
     print(f'workspace: {work_dir}')
@@ -254,10 +249,10 @@ def main(cfg):
     cfg.agent.obs_shape = env.observation_spec().shape
     cfg.agent.action_shape = env.action_spec().shape
     cfg.agent.transformer_cfg = agent.config
-    exp_name = '_'.join([cfg.agent.name,cfg.task, cfg.pretrained_data, str(cfg.replan),str(cfg.seed)])
+    exp_name = '_'.join([cfg.agent.name,cfg.task, str(cfg.replan),str(cfg.seed)])
     wandb_config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     wandb.init(project=cfg.project,
-               entity="value_transformer",
+               entity="maskdp",
                name=exp_name,
                config=wandb_config,
                settings=wandb.Settings(
@@ -276,19 +271,9 @@ def main(cfg):
     # create data storage
     domain = get_domain(cfg.task)
 
-    replay_dir = Path(cfg.replay_buffer_dir) / domain / cfg.task
     goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
 
-    print(f'replay dir, goal dir: {replay_dir, goal_dir}')
-
-    replay_loader = make_replay_loader(env, replay_dir, cfg.replay_buffer_size,
-                                       cfg.batch_size,
-                                       cfg.replay_buffer_num_workers,
-                                       cfg.discount,
-                                       domain,
-                                       agent.config.traj_length,
-                                       relabel=False)
-    replay_iter = iter(replay_loader)
+    print(f'goal dir: {goal_dir}')
 
     goal_loader = make_replay_loader(env, goal_dir, cfg.goal_buffer_size,
                                      cfg.num_eval_episodes,
@@ -307,39 +292,21 @@ def main(cfg):
     timer = utils.Timer()
 
     global_step = 0
-
-    train_until_step = utils.Until(cfg.num_grad_steps)
     eval_every_step = utils.Every(cfg.eval_every_steps)
-    log_every_step = utils.Every(cfg.log_every_steps)
 
-    while train_until_step(global_step):
-        # try to evaluate
-        if eval_every_step(global_step):
-            logger.log('eval_total_time', timer.total_time(), global_step)
-            if cfg.agent.name == 'mdp_goal':
-                eval_mdp(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
-                         video_recorder, replan=cfg.replan)
-            elif cfg.agent.name == 'bc_goal':
-                eval_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
+    if eval_every_step(global_step):
+        logger.log('eval_total_time', timer.total_time(), global_step)
+        if cfg.agent.name == 'mdp_goal':
+            eval_mdp(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
+                     video_recorder, replan=cfg.replan)
+        elif cfg.agent.name == 'bc_goal':
+            eval_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
+                    video_recorder)
+        elif cfg.agent.name == 'seq_goal':
+            eval_seq_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
                         video_recorder)
-            elif cfg.agent.name == 'seq_goal':
-                eval_seq_bc(global_step, agent, env, logger, goal_iter, device, cfg.num_eval_episodes,
-                            video_recorder)
-            #elif cfg.agent.name == 'seq_goal':
-
-        '''
-        metrics = agent.update(replay_iter, global_step)
-        logger.log_metrics(metrics, global_step, ty='train')
-        if log_every_step(global_step):
-            elapsed_time, total_time = timer.reset()
-            with logger.log_and_dump_ctx(global_step, ty='train') as log:
-                log('fps', cfg.log_every_steps / elapsed_time)
-                log('total_time', total_time)
-                log('step', global_step)
-        '''
-
-        global_step += 1
-        break
+        else:
+            raise NotImplementedError
 
 
 

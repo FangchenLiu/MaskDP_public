@@ -2,18 +2,20 @@
 
 # Masked Autoencoding for Scalable and Generalizable Decision Making
 
-This codebase is a pre-released implementation of [MaskDP](https://openreview.net/forum?id=lNokkSaUbfV).
+This is the official implementation for the paper [Masked Autoencoding for Scalable and Generalizable Decision Making
+](https://arxiv.org/pdf/2211.12740.pdf).
 
-TODO: clean up codebase,  upload models and datasets.
+```
+@inproceedings{liu2022masked,
+    title={Masked Autoencoding for Scalable and Generalizable Decision Making},
+    author={Liu, Fangchen and Liu, Hao and Grover, Aditya and Abbeel, Pieter},
+    booktitle={Advances in Neural Information Processing Systems},
+    year={2022}
+}
+```
 
-## Prerequisites
 
-Install [MuJoCo](http://www.mujoco.org/) if it is not already the case:
-
-* Download MuJoCo binaries [here](https://mujoco.org/download).
-* Unzip the downloaded archive into `~/.mujoco/`.
-* Append the MuJoCo subdirectory bin path into the env variable `LD_LIBRARY_PATH`.
-
+## Installation
 Install the following libraries:
 ```sh
 sudo apt update
@@ -28,10 +30,23 @@ conda activate maskdp
 
 ## Dataset
 
-In this paper, we use unsupervised/semi/supervised data collected based on [ExoRL](https://github.com/denisyarats/exorl).
-You can follow the repo and collect offline data as described in our appendix. You can also
-collect your own offline data. 
+### Download precollected dataset
+We provide the datasets used in the paper on [HuggingFace](https://huggingface.co/datasets/fangchenliu/maskdp_data). Please download there. 
+We will update the dataset card soon.
+
+
+### Collect your own dataset
+If you want to customize your own dataset on different environments, please follow the instructions in the ```data_collection``` branch.
 
 ## Example Scripts
 
-We provide example in ``example_scripts`` to train or evaluate the model. Please modify the path to your local dataset.
+We provide example scripts in ``train`` and ``eval`` folder to train or evaluate the model. Please modify the path to your local dataset.
+
+
+## Acknowledgement
+* This project is inspired by [ExoRL](https://github.com/denisyarats/exorl). We use the same environment and data collection pipeline.
+
+* The transformer implementation is adapted from [minGPT](https://github.com/karpathy/minGPT) and [original MAE](https://github.com/facebookresearch/mae).
+
+## Contact
+If you have any questions, please open an issue or contact fangchen_liu@berkeley.edu.
