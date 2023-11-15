@@ -139,7 +139,7 @@ def main(cfg):
         replay_dir = datasets_dir.resolve() / domain
     else:
         print("using supervised data")
-        replay_dir = datasets_dir.resolve() / domain / cfg.task
+        replay_dir = datasets_dir.resolve() / cfg.task
     print(replay_dir)
     replay_loader = make_replay_loader(
         env,

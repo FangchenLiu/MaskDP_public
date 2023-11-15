@@ -32,7 +32,43 @@ conda activate maskdp
 
 ### Download precollected dataset
 We provide the datasets used in the paper on [HuggingFace](https://huggingface.co/datasets/fangchenliu/maskdp_data). Please download there. 
-We will update the dataset card soon.
+The dataset is organized in the following format:
+```
+├── maskdp_train
+│   ├── cheetah
+│   │   ├── expert # near-expert rollouts from TD3 policy
+|   |   |   ├── cheetah_run
+|   |   |   |   ├── 0.npy
+|   |   |   |   ├── 1.npy
+|   |   |   |   ├── ...
+|   |   |   ├── cheetah_run_backwards
+│   │   ├── sup # supervised data, full experience replay with extrinsic reward
+|   |   |   ├── cheetah_run
+|   |   |   ├── cheetah_run_backwards
+│   │   ├── semi # semi-supervised data, full experience replay with extrinsic + intrinsic reward
+|   |   |   ├── cheetah_run
+|   |   |   ├── cheetah_run_backwards
+│   │   ├── unsup # unsupervised data, full experience replay with intrinsic reward
+|   |   |   ├── 0.npy
+|   |   |   ├── 1.npy
+|   |   |   ├── ...
+│   ├── walker
+...
+│   ├── quadruped
+...
+├── maskdp_eval
+│   ├── expert
+│   │   ├── cheetah_run
+│   │   ├── cheetah_run_backwards
+│   │   ├── ...
+│   │   ├── walker_stand
+│   │   ├── quadruped_walk
+│   │   ├── ...
+│   ├── unsup
+│   │   ├── cheetah
+│   │   ├── walker
+│   │   ├── quadruped
+```
 
 
 ### Collect your own dataset

@@ -322,7 +322,7 @@ def main(cfg):
     # create data storage
     domain = get_domain(cfg.task)
 
-    goal_dir = Path(cfg.goal_buffer_dir) / domain / cfg.task
+    goal_dir = Path(cfg.goal_buffer_dir) / cfg.task
 
     print(f"goal dir: {goal_dir}")
 
