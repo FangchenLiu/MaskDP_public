@@ -31,7 +31,10 @@ conda activate maskdp
 ## Dataset
 
 ### Download precollected dataset
-We provide the datasets used in the paper on [HuggingFace](https://huggingface.co/datasets/fangchenliu/maskdp_data). Please download there. 
+We provide the datasets used in the paper on [HuggingFace](https://huggingface.co/datasets/fangchenliu/maskdp_data). You can download the dataset with the command:
+```
+git clone git@hf.co:datasets/fangchenliu/maskdp_data
+```
 The dataset is organized in the following format:
 ```
 ├── maskdp_train
